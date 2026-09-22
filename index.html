@@ -2,8 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Extractor de Ticks Deriv V75 (1s)</title>
-  <!-- Pako para comprimir directamente en el cliente a .csv.gz -->
+  <title>Extractor Deriv V75 (1s)</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
   <style>
     * { box-sizing: border-box; }
@@ -20,35 +19,25 @@
     }
     .card {
       background: #1e293b;
-      padding: 28px;
+      padding: 24px;
       border-radius: 12px;
       width: 100%;
-      max-width: 520px;
+      max-width: 500px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.6);
       border: 1px solid #334155;
     }
-    h2 { margin-top: 0; color: #38bdf8; font-size: 1.3rem; }
-    p { color: #94a3b8; font-size: 0.85rem; margin-bottom: 1.2rem; }
-    .field {
-      margin-bottom: 16px;
-    }
-    label {
-      display: block;
-      font-size: 0.8rem;
-      color: #cbd5e1;
-      margin-bottom: 6px;
-      font-weight: 600;
-    }
+    h2 { margin-top: 0; color: #38bdf8; font-size: 1.2rem; }
+    p { color: #94a3b8; font-size: 0.85rem; margin-bottom: 1rem; }
     input {
       width: 100%;
       background: #0f172a;
       border: 1px solid #334155;
-      padding: 10px 12px;
+      padding: 10px;
       border-radius: 6px;
       color: #fff;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
+      margin-bottom: 12px;
     }
-    input:focus { outline: none; border-color: #38bdf8; }
     button {
       background: #2563eb;
       color: white;
@@ -59,25 +48,17 @@
       font-weight: 600;
       cursor: pointer;
       width: 100%;
-      margin-top: 8px;
-      transition: background 0.2s;
     }
-    button:hover { background: #1d4ed8; }
     button:disabled { background: #475569; cursor: not-allowed; }
     .progress-box {
-      margin: 16px 0;
+      margin: 14px 0;
       background: #0f172a;
       border-radius: 6px;
       height: 10px;
       overflow: hidden;
       border: 1px solid #334155;
     }
-    .progress-bar {
-      height: 100%;
-      width: 0%;
-      background: #38bdf8;
-      transition: width 0.2s ease;
-    }
+    .progress-bar { height: 100%; width: 0%; background: #38bdf8; transition: width 0.2s; }
     #console {
       background: #020617;
       border: 1px solid #334155;
@@ -94,30 +75,26 @@
 <body>
 
 <div class="card">
-  <h2>Extractor Deriv: Volatility 75 (1s)</h2>
-  <p>Descarga directa de 100.000 ticks en archivo comprimido <code>.csv.gz</code>.</p>
+  <h2>Extractor V75 (1s) - 100k Ticks</h2>
+  <p>Pega el código obtenido de Deriv.</p>
 
-  <div class="field">
-    <label for="appId">Tu App ID registrado en Deriv:</label>
-    <input type="text" id="appId" placeholder="Ej: 61423" />
-  </div>
-
-  <button id="btnStart" onclick="iniciar()">Iniciar Extracción</button>
+  <input type="text" id="credential" value="34sXT58c5CvohLOUewrMU" />
+  <button id="btn" onclick="iniciar()">Iniciar Extracción</button>
 
   <div class="progress-box">
     <div id="bar" class="progress-bar"></div>
   </div>
 
-  <div id="console">> Esperando App ID para iniciar conexión...</div>
+  <div id="console">> Presiona Iniciar para conectar...</div>
 </div>
 
 <script>
-const SYMBOL = '1HZ75V'; // Volatility 75 (1s)
+const SYMBOL = '1HZ75V';
 const TARGET = 100000;
 const BATCH = 5000;
 
 let ws = null;
-let ticks = [];
+let allTicks = [];
 let currentEnd = 'latest';
 
 function log(msg, color = '#a5f3fc') {
@@ -132,32 +109,48 @@ function updateProgress(count) {
 }
 
 function iniciar() {
-  const appId = document.getElementById('appId').value.trim();
-  if (!appId) {
-    alert('Ingresa tu App ID registrado en api.deriv.com');
+  const val = document.getElementById('credential').value.trim();
+  if (!val) {
+    alert('Ingresa la credencial.');
     return;
   }
 
-  document.getElementById('btnStart').disabled = true;
-  document.getElementById('appId').disabled = true;
-  ticks = [];
+  document.getElementById('btn').disabled = true;
+  allTicks = [];
   currentEnd = 'latest';
 
-  const wsUrl = `wss://ws.derivws.com/websockets/v3?app_id=${appId}`;
-  log(`Conectando a Deriv WebSocket (App ID: ${appId})...`);
-
-  ws = new WebSocket(wsUrl);
+  // Usamos el endpoint base universal
+  const url = `wss://ws.derivws.com/websockets/v3?app_id=1089`;
+  log('Abriendo socket...');
+  
+  ws = new WebSocket(url);
 
   ws.onopen = () => {
-    log('¡Conexión establecida con éxito! Solicitando ticks...');
-    pedirLote();
+    log('Socket abierto. Verificando credencial en Deriv...');
+    // Intentamos autorizar primero con el valor ingresado
+    ws.send(JSON.stringify({ authorize: val }));
   };
 
   ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
 
+    // Si authorize responde con éxito
+    if (data.msg_type === 'authorize') {
+      log('¡Credencial verificada con éxito!', '#4ade80');
+      log('Comenzando recolección de ticks...');
+      pedirLote();
+      return;
+    }
+
+    // Si falló authorize (porque era un ID y no un token), pedimos directo sin auth
+    if (data.error && data.echo_req && data.echo_req.authorize) {
+      log('Aviso: Procesando como ID de lectura pública...', '#facc15');
+      pedirLote();
+      return;
+    }
+
     if (data.error) {
-      log(`Error de Deriv: ${data.error.message}`, '#f87171');
+      log(`Error Deriv: ${data.error.message}`, '#f87171');
       cerrar();
       return;
     }
@@ -167,22 +160,21 @@ function iniciar() {
       const prices = data.history.prices || [];
 
       if (!times.length) {
-        log('No se recibieron más ticks.', '#facc15');
-        generarArchivo();
+        log('Fin del historial disponible.', '#facc15');
+        descargar();
         return;
       }
 
       const batch = times.map((t, i) => ({ epoch: t, price: prices[i] }));
-      ticks = batch.concat(ticks);
+      allTicks = batch.concat(allTicks);
 
-      updateProgress(ticks.length);
-      log(`Descargados: ${ticks.length.toLocaleString()} / ${TARGET.toLocaleString()} ticks`);
+      updateProgress(allTicks.length);
+      log(`Descargados: ${allTicks.length.toLocaleString()} / ${TARGET.toLocaleString()} ticks`);
 
-      if (ticks.length >= TARGET) {
-        ticks = ticks.slice(ticks.length - TARGET);
-        generarArchivo();
+      if (allTicks.length >= TARGET) {
+        allTicks = allTicks.slice(allTicks.length - TARGET);
+        descargar();
       } else {
-        // El siguiente lote retrocede en el tiempo antes del tick más antiguo recibido
         currentEnd = times[0] - 1;
         setTimeout(pedirLote, 150);
       }
@@ -190,7 +182,7 @@ function iniciar() {
   };
 
   ws.onerror = () => {
-    log('Error de WebSocket. Verifica que la URL del navegador coincida con la Redirect URL registrada en tu App ID.', '#ef4444');
+    log('Fallo de red en el WebSocket.', '#ef4444');
     cerrar();
   };
 }
@@ -206,20 +198,18 @@ function pedirLote() {
 }
 
 function cerrar() {
-  document.getElementById('btnStart').disabled = false;
-  document.getElementById('appId').disabled = false;
+  document.getElementById('btn').disabled = false;
   if (ws) ws.close();
 }
 
-function generarArchivo() {
-  log('Generando archivo CSV...');
+function descargar() {
+  log('Comprimiendo datos en .csv.gz...');
   let csv = 'epoch,datetime_utc,price\n';
-  for (let i = 0; i < ticks.length; i++) {
-    const t = ticks[i];
+  for (let i = 0; i < allTicks.length; i++) {
+    const t = allTicks[i];
     csv += `${t.epoch},${new Date(t.epoch * 1000).toISOString()},${t.price}\n`;
   }
 
-  log('Comprimiendo con Gzip (.csv.gz)...');
   const compressed = pako.gzip(csv);
   const blob = new Blob([compressed], { type: 'application/gzip' });
   const url = URL.createObjectURL(blob);
@@ -232,7 +222,7 @@ function generarArchivo() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 
-  log('¡Descarga completada! Sube el archivo aquí.', '#4ade80');
+  log('¡Archivo descargado con éxito!', '#4ade80');
   cerrar();
 }
 </script>
