@@ -2,33 +2,32 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Extractor Deriv - App lectorticks</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Extractor de Ticks Deriv (Oficial)</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
   <style>
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background: #090d16;
       color: #f1f5f9;
-      font-family: system-ui, -apple-system, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 14px;
       min-height: 100vh;
-      margin: 0;
-      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
     .card {
       background: #1e293b;
-      padding: 24px;
+      padding: 18px;
       border-radius: 12px;
       width: 100%;
-      max-width: 600px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      max-width: 480px;
+      margin: 0 auto;
       border: 1px solid #334155;
     }
-    h2 { margin: 0 0 6px 0; color: #38bdf8; font-size: 1.25rem; }
-    p { color: #94a3b8; font-size: 0.82rem; margin: 0 0 14px 0; }
+    h2 { color: #38bdf8; font-size: 1.15rem; margin-bottom: 4px; }
+    p { color: #94a3b8; font-size: 0.78rem; margin-bottom: 12px; }
     
     .badge {
       display: inline-flex;
@@ -37,106 +36,70 @@
       background: #064e3b;
       color: #34d399;
       font-size: 0.72rem;
-      padding: 4px 10px;
+      padding: 4px 8px;
       border-radius: 6px;
       font-family: monospace;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
     .badge.busy { background: #451a03; color: #f59e0b; }
     .badge.err { background: #450a0a; color: #f87171; }
     .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
-    .field-group { margin-bottom: 12px; }
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-    @media (max-width: 520px) { .grid-2 { grid-template-columns: 1fr; } }
-    
-    label {
-      display: block;
-      font-size: 0.76rem;
-      color: #cbd5e1;
-      margin-bottom: 5px;
-      font-weight: 600;
-    }
-    select, input[type="text"], input[type="number"] {
+    .form-group { margin-bottom: 10px; }
+    label { display: block; font-size: 0.75rem; color: #cbd5e1; margin-bottom: 4px; font-weight: 600; }
+    select, input {
       width: 100%;
-      background: #0f172a;
-      border: 1px solid #334155;
-      padding: 9px 10px;
-      border-radius: 6px;
-      color: #fff;
-      font-size: 0.85rem;
-      font-family: monospace;
-    }
-    select:focus, input:focus { outline: none; border-color: #38bdf8; }
-
-    .options-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-    .opt-card {
       background: #0f172a;
       border: 1px solid #334155;
       padding: 10px;
       border-radius: 8px;
-      font-size: 0.82rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      color: #fff;
+      font-size: 0.88rem;
+      font-family: monospace;
+      outline: none;
     }
-    .opt-card input { cursor: pointer; }
 
-    .btn-row { display: flex; gap: 10px; margin-top: 6px; }
     button {
-      flex: 1;
+      width: 100%;
       background: #2563eb;
       color: white;
       border: none;
       padding: 12px;
-      border-radius: 6px;
+      border-radius: 8px;
       font-size: 0.95rem;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
-      transition: background 0.2s;
+      margin-top: 6px;
     }
-    button:hover { background: #1d4ed8; }
-    button:disabled { background: #475569; cursor: not-allowed; }
+    button:disabled { background: #475569; }
     .btn-stop { background: #dc2626; }
-    .btn-stop:hover { background: #b91c1c; }
 
-    .progress-box {
-      margin: 16px 0 6px 0;
+    .progress-track {
       background: #0f172a;
       border-radius: 6px;
-      height: 12px;
+      height: 10px;
       overflow: hidden;
+      margin: 14px 0 6px 0;
       border: 1px solid #334155;
     }
-    .progress-bar { height: 100%; width: 0%; background: #38bdf8; transition: width 0.15s ease; }
+    .progress-fill { height: 100%; width: 0%; background: #38bdf8; transition: width 0.15s; }
     
-    .stats-row {
+    .stats-line {
       display: flex;
       justify-content: space-between;
-      font-size: 0.78rem;
+      font-size: 0.75rem;
       color: #94a3b8;
       font-family: monospace;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
     #console {
       background: #020617;
       border: 1px solid #334155;
-      border-radius: 6px;
-      padding: 12px;
+      border-radius: 8px;
+      padding: 10px;
       font-family: monospace;
-      font-size: 0.74rem;
-      height: 180px;
+      font-size: 0.72rem;
+      height: 140px;
       overflow-y: auto;
       color: #a5f3fc;
     }
@@ -145,92 +108,61 @@
 <body>
 
 <div class="card">
-  <h2>Extractor de Ticks Deriv (App lectorticks)</h2>
-  <p>Conexión directa mediante App ID y Token PAT registrados en tu cuenta.</p>
+  <h2>Extractor de Ticks Deriv API v3</h2>
+  <p>Conexión según especificación oficial developers.deriv.com</p>
 
   <div id="statusBadge" class="badge">
     <span class="dot"></span>
-    <span id="badgeText">Credenciales configuradas</span>
+    <span id="badgeText">Listo para conectar</span>
   </div>
 
-  <div class="field-group">
-    <label for="tokenInput">Token PAT:</label>
-    <input type="text" id="tokenInput" value="pat_82b934e6bb4488bbc3930f926266e11640cd481d4a9c1d094c34d951baf55e2f">
+  <div class="form-group">
+    <label>Activo:</label>
+    <select id="assetSelect">
+      <option value="1HZ75V" selected>1HZ75V (Volatility 75 1s)</option>
+      <option value="1HZ10V">1HZ10V (Volatility 10 1s)</option>
+      <option value="1HZ100V">1HZ100V (Volatility 100 1s)</option>
+      <option value="R_75">R_75 (Volatility 75 2s)</option>
+      <option value="R_100">R_100 (Volatility 100 2s)</option>
+    </select>
   </div>
 
-  <div class="grid-2">
-    <div>
-      <label for="appIdInput">Tu App ID registrado:</label>
-      <input type="text" id="appIdInput" value="34sxIdqQokQekwYHyxV5t">
-    </div>
-    <div>
-      <label for="serverHost">Servidor WebSocket:</label>
-      <select id="serverHost">
-        <option value="wss://ws.derivws.com/websockets/v3" selected>Oficial (ws.derivws.com)</option>
-        <option value="wss://red.derivws.com/websockets/v3">Servidor Red (red.derivws.com)</option>
-      </select>
-    </div>
+  <div class="form-group">
+    <label>Cantidad de Ticks:</label>
+    <input type="number" id="targetCount" value="100000" step="5000" min="5000">
   </div>
 
-  <div class="grid-2">
-    <div>
-      <label for="assetSelect">Activo a extraer:</label>
-      <select id="assetSelect">
-        <optgroup label="Sintéticos 1s">
-          <option value="1HZ75V" selected>1HZ75V (Volatility 75 1s)</option>
-          <option value="1HZ10V">1HZ10V (Volatility 10 1s)</option>
-          <option value="1HZ100V">1HZ100V (Volatility 100 1s)</option>
-        </optgroup>
-        <optgroup label="Sintéticos Estándar 2s">
-          <option value="R_75">R_75 (Volatility 75)</option>
-          <option value="R_100">R_100 (Volatility 100)</option>
-        </optgroup>
-      </select>
-    </div>
+  <button id="btnStart" onclick="iniciar()">▶ Iniciar Descarga de Ticks</button>
+  <button id="btnStop" class="btn-stop" onclick="detener()" style="display:none;">⏹ Detener y Guardar</button>
 
-    <div>
-      <label for="targetCount">Cantidad de Ticks:</label>
-      <input type="number" id="targetCount" value="100000" step="5000" min="5000">
-    </div>
+  <div class="progress-track">
+    <div id="bar" class="progress-fill"></div>
   </div>
 
-  <div class="options-grid">
-    <label class="opt-card">
-      <input type="radio" name="format" value="csv" checked>
-      <span>CSV Plano (.csv)</span>
-    </label>
-    <label class="opt-card">
-      <input type="radio" name="format" value="gz">
-      <span>Comprimido (.csv.gz)</span>
-    </label>
-  </div>
-
-  <div class="btn-row">
-    <button id="btnStart" onclick="iniciarExtraccion()">Iniciar Extracción</button>
-    <button id="btnStop" class="btn-stop" onclick="detenerExtraccion()" style="display: none;">Detener y Descargar</button>
-  </div>
-
-  <div class="progress-box">
-    <div id="bar" class="progress-bar"></div>
-  </div>
-
-  <div class="stats-row">
+  <div class="stats-line">
     <span id="statCount">Ticks: 0 / 100.000</span>
     <span id="statPct">0%</span>
   </div>
 
-  <div id="console">> Presiona "Iniciar Extracción" para conectar con tu App ID...</div>
+  <div id="console">> Presiona Iniciar para conectar con Deriv...</div>
 </div>
 
 <script>
+// Endpoints conformes a la especificación de Deriv API v3
+const SERVERS = [
+  'wss://ws.derivws.com/websockets/v3?app_id=1089',
+  'wss://ws.binaryws.com/websockets/v3?app_id=1089'
+];
 const BATCH_SIZE = 5000;
+
 let ws = null;
 let allTicks = [];
 let currentEnd = 'latest';
 let isRunning = false;
 let selectedSymbol = '1HZ75V';
 let targetTicks = 100000;
-let connectTimer = null;
+let srvIndex = 0;
+let connectTimeout = null;
 
 function log(msg, color = '#a5f3fc') {
   const el = document.getElementById('console');
@@ -242,7 +174,7 @@ function log(msg, color = '#a5f3fc') {
 function updateProgress(count) {
   const pct = Math.min(100, Math.round((count / targetTicks) * 100));
   document.getElementById('bar').style.width = pct + '%';
-  document.getElementById('statCount').innerText = `Ticks: ${count.toLocaleString()} / ${targetTicks.toLocaleString()}`;
+  document.getElementById('statCount').innerText = `${count.toLocaleString()} / ${targetTicks.toLocaleString()}`;
   document.getElementById('statPct').innerText = `${pct}%`;
 }
 
@@ -252,10 +184,10 @@ function setBadge(text, type = 'normal') {
   b.className = 'badge ' + (type === 'err' ? 'err' : (type === 'busy' ? 'busy' : ''));
 }
 
-function limpiarSocket() {
-  if (connectTimer) {
-    clearTimeout(connectTimer);
-    connectTimer = null;
+function limpiar() {
+  if (connectTimeout) {
+    clearTimeout(connectTimeout);
+    connectTimeout = null;
   }
   if (ws) {
     ws.onopen = null;
@@ -267,56 +199,55 @@ function limpiarSocket() {
   }
 }
 
-function iniciarExtraccion() {
+function iniciar() {
   if (isRunning) return;
 
-  const token = document.getElementById('tokenInput').value.trim();
-  const appId = document.getElementById('appIdInput').value.trim();
-  const host = document.getElementById('serverHost').value;
   selectedSymbol = document.getElementById('assetSelect').value;
   targetTicks = parseInt(document.getElementById('targetCount').value, 10) || 100000;
-
-  if (!token || !appId) {
-    alert('Se requiere tanto el Token PAT como el App ID.');
-    return;
-  }
 
   isRunning = true;
   allTicks = [];
   currentEnd = 'latest';
+  srvIndex = 0;
   updateProgress(0);
 
   document.getElementById('btnStart').style.display = 'none';
   document.getElementById('btnStop').style.display = 'block';
-  document.getElementById('tokenInput').disabled = true;
-  document.getElementById('appIdInput').disabled = true;
   document.getElementById('assetSelect').disabled = true;
+  document.getElementById('targetCount').disabled = true;
 
-  const wsUrl = `${host}?app_id=${encodeURIComponent(appId)}`;
-  setBadge('Conectando a Deriv...', 'busy');
-  log(`Abriendo WebSocket: ${wsUrl}...`, '#38bdf8');
+  conectar();
+}
 
-  limpiarSocket();
+function conectar() {
+  if (!isRunning) return;
+  limpiar();
 
-  connectTimer = setTimeout(() => {
-    log('Tiempo de espera agotado al conectar. Revisa tu conexión a internet o intenta con el Servidor Red.', '#ef4444');
-    setBadge('Timeout de conexión', 'err');
-    finalizar(allTicks.length > 0);
-  }, 10000);
+  const url = SERVERS[srvIndex];
+  setBadge('Conectando...', 'busy');
+  log(`Conectando a Deriv API (${url.split('//')[1].split('/')[0]})...`, '#38bdf8');
+
+  // Timeout de 15 segundos para dar margen suficiente a redes 4G
+  connectTimeout = setTimeout(() => {
+    log('Demora en el servidor actual. Probando respaldo...', '#f59e0b');
+    rotarServidor();
+  }, 15000);
 
   try {
-    ws = new WebSocket(wsUrl);
-  } catch (err) {
-    log(`Error de inicialización: ${err.message}`, '#ef4444');
-    finalizar(false);
+    ws = new WebSocket(url);
+  } catch(e) {
+    rotarServidor();
     return;
   }
 
   ws.onopen = () => {
-    clearTimeout(connectTimer);
-    setBadge('Autenticando token...', 'busy');
-    log(`Conexión física abierta. Enviando token PAT (${token.substring(0, 8)}...)...`, '#f59e0b');
-    ws.send(JSON.stringify({ authorize: token }));
+    if (connectTimeout) {
+      clearTimeout(connectTimeout);
+      connectTimeout = null;
+    }
+    setBadge('Conectado');
+    log(`✔ Canal abierto. Solicitando lotes de ${selectedSymbol}...`, '#4ade80');
+    solicitarLote();
   };
 
   ws.onmessage = (event) => {
@@ -326,27 +257,17 @@ function iniciarExtraccion() {
       const data = JSON.parse(event.data);
 
       if (data.error) {
-        log(`[Error de Deriv]: ${data.error.message}`, '#ef4444');
-        setBadge(`Error: ${data.error.code}`, 'err');
-        finalizar(allTicks.length > 0);
+        log(`Error: ${data.error.message}`, '#ef4444');
+        rotarServidor();
         return;
       }
 
-      // Sesión autorizada con éxito
-      if (data.msg_type === 'authorize') {
-        const acc = data.authorize;
-        setBadge(`Autorizado: ${acc.loginid}`);
-        log(`✔ Cuenta autorizada: ${acc.loginid} (${acc.currency || 'USD'}). Solicitando lotes de ${selectedSymbol}...`, '#4ade80');
-        solicitarLote();
-      }
-
-      // Recepción de ticks históricos
       if (data.msg_type === 'history') {
         const times = data.history.times || [];
         const prices = data.history.prices || [];
 
         if (!times.length) {
-          log('Fin de datos históricos devuelto por Deriv.', '#facc15');
+          log('Fin del historial disponible.', '#facc15');
           finalizar(true);
           return;
         }
@@ -362,27 +283,31 @@ function iniciarExtraccion() {
           finalizar(true);
         } else {
           currentEnd = times[0] - 1;
-          setTimeout(solicitarLote, 130);
+          setTimeout(solicitarLote, 150);
         }
       }
-    } catch (e) {
+    } catch(e) {
       console.error(e);
     }
   };
 
   ws.onerror = () => {
-    log('Fallo en la comunicación con el WebSocket.', '#ef4444');
-    setBadge('Error de red', 'err');
-    finalizar(allTicks.length > 0);
+    log('Aviso de red móvil en este nodo.', '#ef4444');
+    rotarServidor();
   };
 
   ws.onclose = () => {
     if (isRunning && allTicks.length < targetTicks) {
-      log('Conexión cerrada por el servidor.', '#f87171');
-      setBadge('Desconectado', 'err');
-      finalizar(allTicks.length > 0);
+      rotarServidor();
     }
   };
+}
+
+function rotarServidor() {
+  if (!isRunning) return;
+  limpiar();
+  srvIndex = (srvIndex + 1) % SERVERS.length;
+  setTimeout(conectar, 1000);
 }
 
 function solicitarLote() {
@@ -396,29 +321,28 @@ function solicitarLote() {
   }));
 }
 
-function detenerExtraccion() {
+function detener() {
   if (!isRunning) return;
-  log('Detención manual. Procesando datos recopilados...', '#f59e0b');
+  log('Descarga detenida. Guardando datos...', '#f59e0b');
   finalizar(allTicks.length > 0);
 }
 
-function finalizar(generarDescarga) {
+function finalizar(descargar) {
   isRunning = false;
-  limpiarSocket();
+  limpiar();
 
   document.getElementById('btnStart').style.display = 'block';
   document.getElementById('btnStop').style.display = 'none';
-  document.getElementById('tokenInput').disabled = false;
-  document.getElementById('appIdInput').disabled = false;
   document.getElementById('assetSelect').disabled = false;
+  document.getElementById('targetCount').disabled = false;
 
-  if (generarDescarga && allTicks.length > 0) {
-    generarArchivo();
+  if (descargar && allTicks.length > 0) {
+    guardarCSV();
   }
 }
 
-function generarArchivo() {
-  log(`Exportando ${allTicks.length.toLocaleString()} registros de ${selectedSymbol}...`, '#38bdf8');
+function guardarCSV() {
+  log(`Generando CSV con ${allTicks.length.toLocaleString()} ticks...`, '#38bdf8');
 
   let csv = 'epoch,datetime_utc,symbol,price\n';
   for (let i = 0; i < allTicks.length; i++) {
@@ -427,31 +351,17 @@ function generarArchivo() {
     csv += `${t.epoch},${iso},${selectedSymbol},${t.price}\n`;
   }
 
-  const formato = document.querySelector('input[name="format"]:checked').value;
-  const ts = Date.now();
-  const filename = `deriv_${selectedSymbol}_${allTicks.length}k_${ts}`;
-
-  if (formato === 'gz') {
-    const compressed = pako.gzip(csv);
-    const blob = new Blob([compressed], { type: 'application/gzip' });
-    descargarBlob(blob, `${filename}.csv.gz`);
-  } else {
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    descargarBlob(blob, `${filename}.csv`);
-  }
-
-  log(`✔ Archivo descargado exitosamente: ${filename}`, '#4ade80');
-}
-
-function descargarBlob(blob, filename) {
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = filename;
+  a.download = `deriv_${selectedSymbol}_${allTicks.length}k_${Date.now()}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+
+  log(`✔ Archivo descargado en tu teléfono con éxito.`, '#4ade80');
 }
 </script>
 </body>
