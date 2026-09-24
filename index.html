@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Extractor Directo de Ticks Deriv</title>
+  <title>Extractor de Ticks Oficial Deriv</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -25,7 +25,6 @@
       max-width: 480px;
       margin: 0 auto;
       border: 1px solid #334155;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     }
     h2 { color: #38bdf8; font-size: 1.15rem; margin-bottom: 4px; }
     p { color: #94a3b8; font-size: 0.78rem; margin-bottom: 12px; }
@@ -72,7 +71,7 @@
       cursor: pointer;
       margin-top: 6px;
     }
-    button:disabled { background: #475569; }
+    button:disabled { background: #475569; cursor: not-allowed; }
     .btn-stop { background: #dc2626; }
 
     .progress-track {
@@ -110,8 +109,8 @@
 <body>
 
 <div class="card">
-  <h2>Extractor de Ticks Deriv (Canal Único)</h2>
-  <p>Paginación histórica continua por bloques de 5.000 ticks.</p>
+  <h2>Extractor de Ticks Deriv API</h2>
+  <p>Especificación estricta developers.deriv.com/llms/ticks-history.md</p>
 
   <div id="statusBadge" class="badge">
     <span class="dot"></span>
@@ -121,10 +120,10 @@
   <div class="form-group">
     <label>Activo Sintético:</label>
     <select id="assetSelect">
-      <option value="R_100" selected>R_100 (Volatility 100 2s)</option>
-      <option value="R_75">R_75 (Volatility 75 2s)</option>
-      <option value="1HZ75V">1HZ75V (Volatility 75 1s)</option>
+      <option value="1HZ75V" selected>1HZ75V (Volatility 75 1s)</option>
+      <option value="R_75">R_75 (Volatility 75)</option>
       <option value="1HZ100V">1HZ100V (Volatility 100 1s)</option>
+      <option value="R_100">R_100 (Volatility 100)</option>
       <option value="1HZ10V">1HZ10V (Volatility 10 1s)</option>
     </select>
   </div>
@@ -134,7 +133,7 @@
     <input type="number" id="targetCount" value="100000" step="5000" min="5000">
   </div>
 
-  <button id="btnStart" onclick="iniciarExtraccion()">▶ Iniciar Descarga</button>
+  <button id="btnStart" onclick="iniciarExtraccion()">▶ Iniciar Descarga Oficial</button>
   <button id="btnStop" class="btn-stop" onclick="detener()" style="display:none;">⏹ Detener y Guardar CSV</button>
 
   <div class="progress-track">
@@ -146,10 +145,11 @@
     <span id="statPct">0%</span>
   </div>
 
-  <div id="console">> Selecciona el activo y pulsa Iniciar Descarga...</div>
+  <div id="console">> Selecciona el símbolo y pulsa Iniciar...</div>
 </div>
 
 <script>
+// Parámetros conforme a ticks-history.md
 const BATCH_SIZE = 5000;
 const SERVERS = [
   'wss://ws.derivws.com/websockets/v3?app_id=1089',
@@ -158,11 +158,12 @@ const SERVERS = [
 
 let ws = null;
 let allTicks = [];
-let currentEnd = 'latest';
+let currentEnd = 'latest'; // Puede ser 'latest' o un entero Epoch numérico
 let isRunning = false;
-let selectedSymbol = 'R_100';
+let selectedSymbol = '1HZ75V';
 let targetTicks = 100000;
 let srvIdx = 0;
+let watchdogTimer = null;
 
 function log(msg, color = '#a5f3fc') {
   const el = document.getElementById('console');
@@ -182,6 +183,21 @@ function setBadge(text, type = 'normal') {
   const b = document.getElementById('statusBadge');
   document.getElementById('badgeText').innerText = text;
   b.className = 'badge ' + (type === 'err' ? 'err' : (type === 'busy' ? 'busy' : ''));
+}
+
+function limpiarSocket() {
+  if (watchdogTimer) {
+    clearTimeout(watchdogTimer);
+    watchdogTimer = null;
+  }
+  if (ws) {
+    ws.onopen = null;
+    ws.onmessage = null;
+    ws.onerror = null;
+    ws.onclose = null;
+    try { ws.close(); } catch(e){}
+    ws = null;
+  }
 }
 
 function iniciarExtraccion() {
@@ -206,32 +222,30 @@ function iniciarExtraccion() {
 
 function conectar() {
   if (!isRunning) return;
-
-  if (ws) {
-    ws.onopen = null;
-    ws.onmessage = null;
-    ws.onerror = null;
-    ws.onclose = null;
-    try { ws.close(); } catch(e){}
-    ws = null;
-  }
+  limpiarSocket();
 
   const url = SERVERS[srvIdx];
   const host = url.split('//')[1].split('/')[0];
   setBadge(`Conectando (${host})...`, 'busy');
-  log(`Abriendo canal con ${host}...`, '#38bdf8');
+  log(`Abriendo conexión con ${host}...`, '#38bdf8');
+
+  watchdogTimer = setTimeout(() => {
+    log(`Timeout de respuesta en ${host}. Cambiando de endpoint...`, '#f59e0b');
+    rotarServidor();
+  }, 10000);
 
   try {
     ws = new WebSocket(url);
   } catch (e) {
-    log(`Error de inicialización: ${e.message}`, '#ef4444');
+    log(`Error al instanciar socket: ${e.message}`, '#ef4444');
     rotarServidor();
     return;
   }
 
   ws.onopen = () => {
+    if (watchdogTimer) clearTimeout(watchdogTimer);
     setBadge(`Conectado (${host})`);
-    log(`✔ Canal abierto con ${host}. Solicitando primer lote...`, '#4ade80');
+    log(`✔ WebSocket abierto. Solicitando bloque inicial según ticks-history.md...`, '#4ade80');
     solicitarLote();
   };
 
@@ -242,17 +256,18 @@ function conectar() {
       const res = JSON.parse(event.data);
 
       if (res.error) {
-        log(`[DERIV API ERROR]: ${res.error.message} (Código: ${res.error.code})`, '#ef4444');
+        log(`[DERIV API ERROR]: ${res.error.message} (${res.error.code})`, '#ef4444');
         rotarServidor();
         return;
       }
 
+      // Respuesta estándar según especificación ticks-history.md
       if (res.msg_type === 'history' && res.history) {
         const times = res.history.times || [];
         const prices = res.history.prices || [];
 
-        if (!times.length) {
-          log('No hay más historial previo en Deriv para este activo.', '#facc15');
+        if (times.length === 0) {
+          log('Límite de historial alcanzado en Deriv.', '#facc15');
           finalizar(true);
           return;
         }
@@ -261,15 +276,16 @@ function conectar() {
         allTicks = batch.concat(allTicks);
 
         updateProgress(allTicks.length);
-        log(`Lote recibido: +${times.length} ticks (Total: ${allTicks.length.toLocaleString()})`);
+        log(`Lote: +${times.length} ticks (Total: ${allTicks.length.toLocaleString()})`);
 
         if (allTicks.length >= targetTicks) {
           allTicks = allTicks.slice(allTicks.length - targetTicks);
           finalizar(true);
         } else {
-          // Retrocedemos 1 segundo respecto al tick más antiguo del bloque recibido
-          currentEnd = times[0] - 1;
-          setTimeout(solicitarLote, 160);
+          // El parámetro 'end' DEBE ser estrictamente un entero según ticks-history.md
+          // Restamos 1 segundo al tick más antiguo recibido para no duplicar datos
+          currentEnd = parseInt(times[0], 10) - 1;
+          setTimeout(solicitarLote, 150); // Pausa para respetar límites de tasa
         }
       }
     } catch (e) {
@@ -279,12 +295,11 @@ function conectar() {
 
   ws.onerror = () => {
     log(`Aviso de red en ${host}.`, '#ef4444');
-    rotarServidor();
   };
 
   ws.onclose = () => {
     if (isRunning && allTicks.length < targetTicks) {
-      log(`Conexión cerrada por ${host}. Reanudando...`, '#f59e0b');
+      log(`Conexión finalizada por el servidor. Reanudando...`, '#f59e0b');
       rotarServidor();
     }
   };
@@ -292,10 +307,12 @@ function conectar() {
 
 function rotarServidor() {
   if (!isRunning) return;
+  limpiarSocket();
   srvIdx = (srvIdx + 1) % SERVERS.length;
-  setTimeout(conectar, 1000);
+  setTimeout(conectar, 1200);
 }
 
+// Estructura idéntica al schema documentado en ticks-history.md
 function solicitarLote() {
   if (!ws || ws.readyState !== WebSocket.OPEN || !isRunning) return;
 
@@ -303,13 +320,13 @@ function solicitarLote() {
     ticks_history: selectedSymbol,
     adjust_start_time: 1,
     count: BATCH_SIZE,
-    style: 'ticks'
+    style: "ticks"
   };
 
   if (currentEnd === 'latest') {
     req.end = 'latest';
   } else {
-    req.end = currentEnd;
+    req.end = currentEnd; // Entero numérico
   }
 
   ws.send(JSON.stringify(req));
@@ -317,24 +334,21 @@ function solicitarLote() {
 
 function detener() {
   if (!isRunning) return;
-  log('Detención solicitada. Procesando datos recopilados...', '#f59e0b');
+  log('Detención manual. Procesando archivo...', '#f59e0b');
   finalizar(allTicks.length > 0);
 }
 
 function finalizar(descargar) {
   isRunning = false;
+  limpiarSocket();
+
   document.getElementById('btnStart').style.display = 'block';
   document.getElementById('btnStop').style.display = 'none';
   document.getElementById('assetSelect').disabled = false;
   document.getElementById('targetCount').disabled = false;
 
-  if (ws) {
-    try { ws.close(); } catch(e){}
-    ws = null;
-  }
-
   if (descargar && allTicks.length > 0) {
-    setBadge('Extracción Completada');
+    setBadge('Descarga Lista');
     guardarCSV();
   } else {
     setBadge('Detenido');
@@ -342,7 +356,7 @@ function finalizar(descargar) {
 }
 
 function guardarCSV() {
-  log(`Generando archivo CSV con ${allTicks.length.toLocaleString()} registros...`, '#38bdf8');
+  log(`Generando CSV de ${allTicks.length.toLocaleString()} ticks...`, '#38bdf8');
 
   let csv = 'epoch,datetime_utc,symbol,price\n';
   for (let i = 0; i < allTicks.length; i++) {
@@ -361,7 +375,7 @@ function guardarCSV() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 
-  log(`✔ Archivo CSV descargado en el teléfono con éxito.`, '#4ade80');
+  log(`✔ Archivo guardado con éxito en Descargas.`, '#4ade80');
 }
 </script>
 </body>
