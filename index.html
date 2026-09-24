@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Extractor Universal Deriv (Soporte Token PAT)</title>
+  <title>Extractor Universal de Ticks Deriv (Estable)</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
   <style>
     * { box-sizing: border-box; }
@@ -23,7 +23,7 @@
       padding: 24px;
       border-radius: 12px;
       width: 100%;
-      max-width: 600px;
+      max-width: 580px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.6);
       border: 1px solid #334155;
     }
@@ -37,24 +37,22 @@
       background: #064e3b;
       color: #34d399;
       font-size: 0.72rem;
-      padding: 3px 8px;
-      border-radius: 4px;
+      padding: 4px 10px;
+      border-radius: 6px;
       font-family: monospace;
       margin-bottom: 14px;
     }
-    .badge.err { background: #450a0a; color: #f87171; }
     .badge.busy { background: #451a03; color: #f59e0b; }
-    .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .badge.err { background: #450a0a; color: #f87171; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
-    .grid-fields {
+    .grid-3 {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 2fr 1fr 1fr;
       gap: 10px;
       margin-bottom: 12px;
     }
-    @media (max-width: 520px) {
-      .grid-fields { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 520px) { .grid-3 { grid-template-columns: 1fr; } }
     label {
       display: block;
       font-size: 0.76rem;
@@ -145,20 +143,15 @@
 <body>
 
 <div class="card">
-  <h2>Extractor de Ticks Deriv (Multi-Servidor PAT)</h2>
-  <p>Compatible con tokens Personal Access Token (pat_...) de home.deriv.com.</p>
+  <h2>Extractor de Ticks Deriv (Conexión Directa Robusta)</h2>
+  <p>Descarga paginada en bloques de 5.000 ticks sin requerir token.</p>
 
   <div id="statusBadge" class="badge">
     <span class="dot"></span>
-    <span id="badgeText">Listo para conectar</span>
+    <span id="badgeText">Listo para iniciar</span>
   </div>
 
-  <div style="margin-bottom: 12px;">
-    <label for="tokenInput">Token PAT de Deriv:</label>
-    <input type="text" id="tokenInput" value="pat_82b934e6bb4488bbc3930f926266e11640cd481d4a9c1d094c34d951baf55e2f">
-  </div>
-
-  <div class="grid-fields">
+  <div class="grid-3">
     <div>
       <label for="assetSelect">Activo:</label>
       <select id="assetSelect">
@@ -175,7 +168,12 @@
     </div>
 
     <div>
-      <label for="targetCount">Cantidad de Ticks:</label>
+      <label for="appIdInput">App ID:</label>
+      <input type="text" id="appIdInput" value="1089">
+    </div>
+
+    <div>
+      <label for="targetCount">Cantidad Ticks:</label>
       <input type="number" id="targetCount" value="100000" step="5000" min="5000">
     </div>
   </div>
@@ -205,18 +203,18 @@
     <span id="statPct">0%</span>
   </div>
 
-  <div id="console">> Presiona "Iniciar Extracción" para conectar con tu token PAT...</div>
+  <div id="console">> Selecciona el activo y haz clic en "Iniciar Extracción"...</div>
 </div>
 
 <script>
+// Lista de hosts seguros de Deriv
 const SERVERS = [
   'wss://ws.derivws.com/websockets/v3',
   'wss://red.derivws.com/websockets/v3',
   'wss://blue.derivws.com/websockets/v3'
 ];
-const APP_IDS = ['1089', '36544', '16929'];
-const BATCH_SIZE = 5000;
 
+const BATCH_SIZE = 5000;
 let ws = null;
 let allTicks = [];
 let currentEnd = 'latest';
@@ -224,7 +222,7 @@ let isRunning = false;
 let selectedSymbol = '1HZ75V';
 let targetTicks = 100000;
 let serverIdx = 0;
-let appIdIdx = 0;
+let timeoutTimer = null;
 
 function log(msg, color = '#a5f3fc') {
   const el = document.getElementById('console');
@@ -246,14 +244,24 @@ function setBadge(text, type = 'normal') {
   b.className = 'badge ' + (type === 'err' ? 'err' : (type === 'busy' ? 'busy' : ''));
 }
 
+function limpiarSocket() {
+  if (timeoutTimer) {
+    clearTimeout(timeoutTimer);
+    timeoutTimer = null;
+  }
+  if (ws) {
+    // Desvincular manejadores para evitar ejecuciones en cascada
+    ws.onopen = null;
+    ws.onmessage = null;
+    ws.onerror = null;
+    ws.onclose = null;
+    try { ws.close(); } catch (e) {}
+    ws = null;
+  }
+}
+
 function iniciarExtraccion() {
   if (isRunning) return;
-
-  const token = document.getElementById('tokenInput').value.trim();
-  if (!token) {
-    alert('Ingresa el token PAT.');
-    return;
-  }
 
   selectedSymbol = document.getElementById('assetSelect').value;
   targetTicks = parseInt(document.getElementById('targetCount').value, 10) || 100000;
@@ -262,47 +270,50 @@ function iniciarExtraccion() {
   allTicks = [];
   currentEnd = 'latest';
   serverIdx = 0;
-  appIdIdx = 0;
   updateProgress(0);
 
   document.getElementById('btnStart').style.display = 'none';
   document.getElementById('btnStop').style.display = 'block';
+  document.getElementById('assetSelect').disabled = true;
+  document.getElementById('appIdInput').disabled = true;
+  document.getElementById('targetCount').disabled = true;
 
-  conectarEndpoint(token);
+  conectarServidor();
 }
 
-function conectarEndpoint(token) {
+function conectarServidor() {
   if (!isRunning) return;
 
-  const currentServer = SERVERS[serverIdx];
-  const currentAppId = APP_IDS[appIdIdx];
-  const wsUrl = `${currentServer}?app_id=${currentAppId}`;
+  limpiarSocket();
 
-  setBadge(`Conectando (${currentServer.replace('wss://','').replace('/websockets/v3','')})...`, 'busy');
-  log(`Probando endpoint: ${wsUrl}...`, '#38bdf8');
+  const host = SERVERS[serverIdx];
+  const appId = document.getElementById('appIdInput').value.trim() || '1089';
+  const url = `${host}?app_id=${appId}`;
 
-  if (ws) {
-    try { ws.close(); } catch(e) {}
-  }
+  setBadge(`Conectando a ${host.split('//')[1].split('/')[0]}...`, 'busy');
+  log(`Abriendo enlace: ${url}...`, '#38bdf8');
+
+  // Timeout preventivo de 8 segundos por servidor
+  timeoutTimer = setTimeout(() => {
+    log(`Servidor ${host} no respondió a tiempo. Probando siguiente...`, '#ef4444');
+    saltarSiguienteServidor();
+  }, 8000);
 
   try {
-    ws = new WebSocket(wsUrl);
-  } catch (e) {
-    probarSiguienteConfig(token);
+    ws = new WebSocket(url);
+  } catch (err) {
+    saltarSiguienteServidor();
     return;
   }
 
-  const timeoutTimer = setTimeout(() => {
-    if (ws && ws.readyState !== WebSocket.OPEN) {
-      log(`Timeout en ${wsUrl}. Probando alternativa...`, '#ef4444');
-      probarSiguienteConfig(token);
-    }
-  }, 4000);
-
   ws.onopen = () => {
-    clearTimeout(timeoutTimer);
-    log(`Conexión establecida. Validando token PAT (${token.substring(0, 8)}...)...`, '#f59e0b');
-    ws.send(JSON.stringify({ authorize: token }));
+    if (timeoutTimer) {
+      clearTimeout(timeoutTimer);
+      timeoutTimer = null;
+    }
+    setBadge(`Conectado: ${host.split('//')[1].split('/')[0]}`);
+    log(`✔ Conexión establecida con éxito. Solicitando primer lote de ${selectedSymbol}...`, '#4ade80');
+    solicitarLote();
   };
 
   ws.onmessage = (event) => {
@@ -312,18 +323,9 @@ function conectarEndpoint(token) {
       const data = JSON.parse(event.data);
 
       if (data.error) {
-        log(`[Error ${data.error.code}]: ${data.error.message}`, '#ef4444');
-        if (data.msg_type === 'authorize') {
-          probarSiguienteConfig(token);
-        }
+        log(`[Error API]: ${data.error.message}`, '#ef4444');
+        saltarSiguienteServidor();
         return;
-      }
-
-      if (data.msg_type === 'authorize') {
-        const acc = data.authorize;
-        setBadge(`Autorizado: ${acc.loginid}`);
-        log(`✔ Sesión iniciada para cuenta ${acc.loginid}. Solicitando ticks de ${selectedSymbol}...`, '#4ade80');
-        solicitarLote();
       }
 
       if (data.msg_type === 'history') {
@@ -331,7 +333,7 @@ function conectarEndpoint(token) {
         const prices = data.history.prices || [];
 
         if (!times.length) {
-          log('Fin del historial disponible.', '#facc15');
+          log('Fin del historial devuelto por Deriv.', '#facc15');
           finalizar(true);
           return;
         }
@@ -350,41 +352,37 @@ function conectarEndpoint(token) {
           setTimeout(solicitarLote, 130);
         }
       }
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      console.error(e);
     }
   };
 
   ws.onerror = () => {
-    probarSiguienteConfig(token);
+    log(`Error de red en ${host}.`, '#ef4444');
+    saltarSiguienteServidor();
   };
 
   ws.onclose = () => {
     if (isRunning && allTicks.length < targetTicks) {
-      probarSiguienteConfig(token);
+      log(`Conexión cerrada por ${host}.`, '#f87171');
+      saltarSiguienteServidor();
     }
   };
 }
 
-function probarSiguienteConfig(token) {
-  if (!isRunning) return;
-  
-  appIdIdx++;
-  if (appIdIdx >= APP_IDS.length) {
-    appIdIdx = 0;
-    serverIdx++;
-  }
+function saltarSiguienteServidor() {
+  limpiarSocket();
 
+  serverIdx++;
   if (serverIdx >= SERVERS.length) {
-    log('Se probaron todos los servidores y configuraciones disponibles.', '#ef4444');
-    setBadge('Error de conexión', 'err');
+    log('Se intentaron todos los servidores sin éxito.', '#ef4444');
+    setBadge('Fallo de conexión', 'err');
     finalizar(allTicks.length > 0);
     return;
   }
 
-  setTimeout(() => {
-    conectarEndpoint(token);
-  }, 400);
+  log(`Cambiando de nodo. Intentando con servidor alternativo...`, '#f59e0b');
+  setTimeout(conectarServidor, 600);
 }
 
 function solicitarLote() {
@@ -400,18 +398,19 @@ function solicitarLote() {
 
 function detenerExtraccion() {
   if (!isRunning) return;
-  log('Detención manual. Guardando datos descargados...', '#f59e0b');
+  log('Detención manual. Generando archivo con los datos obtenidos...', '#f59e0b');
   finalizar(allTicks.length > 0);
 }
 
 function finalizar(generarDescarga) {
   isRunning = false;
+  limpiarSocket();
+
   document.getElementById('btnStart').style.display = 'block';
   document.getElementById('btnStop').style.display = 'none';
-
-  if (ws) {
-    try { ws.close(); } catch(e){}
-  }
+  document.getElementById('assetSelect').disabled = false;
+  document.getElementById('appIdInput').disabled = false;
+  document.getElementById('targetCount').disabled = false;
 
   if (generarDescarga && allTicks.length > 0) {
     generarArchivo();
@@ -441,7 +440,7 @@ function generarArchivo() {
     descargarBlob(blob, `${filename}.csv`);
   }
 
-  log(`✔ Descarga finalizada: ${filename}`, '#4ade80');
+  log(`✔ Archivo descargado exitosamente: ${filename}`, '#4ade80');
 }
 
 function descargarBlob(blob, filename) {
