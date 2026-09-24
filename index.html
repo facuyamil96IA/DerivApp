@@ -3,81 +3,114 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Test Conexión Wi-Fi Deriv</title>
+  <title>Verificador Wi-Fi Deriv</title>
   <style>
-    body { background: #090d16; color: #f1f5f9; font-family: sans-serif; padding: 20px; }
-    .card { background: #1e293b; padding: 20px; border-radius: 12px; max-width: 450px; margin: 0 auto; border: 1px solid #334155; }
-    button { width: 100%; padding: 14px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; margin-top: 10px; cursor: pointer; }
-    #log { background: #020617; border: 1px solid #334155; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.75rem; height: 220px; overflow-y: auto; color: #38bdf8; margin-top: 15px; }
+    body { background: #090d16; color: #f1f5f9; font-family: sans-serif; padding: 16px; margin: 0; }
+    .card { background: #1e293b; padding: 20px; border-radius: 12px; max-width: 480px; margin: 0 auto; border: 1px solid #334155; }
+    h3 { margin-top: 0; color: #38bdf8; }
+    p { font-size: 0.8rem; color: #94a3b8; }
+    button { width: 100%; padding: 14px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; }
+    button:disabled { background: #475569; }
+    #log { background: #020617; border: 1px solid #334155; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.74rem; height: 320px; overflow-y: auto; color: #38bdf8; margin-top: 14px; line-height: 1.4; }
   </style>
 </head>
 <body>
 
 <div class="card">
-  <h3>Diagnóstico Wi-Fi Deriv API</h3>
-  <p style="font-size:0.8rem; color:#94a3b8;">Verifica qué servidor responde en tu red Wi-Fi con el App ID numérico oficial (1089).</p>
+  <h3>Diagnóstico Wi-Fi Deriv (20s Tolerancia)</h3>
+  <p>Verificación de enlace sin falsos timeouts por latencia de router.</p>
   
-  <button onclick="probarServidores()">Probar Conexión Wi-Fi</button>
-  <div id="log">> Pulsa el botón para probar los servidores en tu Wi-Fi...</div>
+  <button id="btnTest" onclick="ejecutarTest()">Probar Servidores en Mi Wi-Fi</button>
+  <div id="log">> Pulsa el botón para iniciar...</div>
 </div>
 
 <script>
-const SERVIDORES = [
-  { nombre: "Servidor Oficial", url: "wss://ws.derivws.com/websockets/v3?app_id=1089" },
-  { nombre: "Servidor Clásico (Binary)", url: "wss://ws.binaryws.com/websockets/v3?app_id=1089" },
-  { nombre: "Servidor Red", url: "wss://red.derivws.com/websockets/v3?app_id=1089" }
+const SERVERS = [
+  { name: "Oficial (ws.derivws.com)", url: "wss://ws.derivws.com/websockets/v3?app_id=1089" },
+  { name: "Clásico (ws.binaryws.com)", url: "wss://ws.binaryws.com/websockets/v3?app_id=1089" },
+  { name: "Servidor Red (red.derivws.com)", url: "wss://red.derivws.com/websockets/v3?app_id=1089" },
+  { name: "Cluster Directo (derivws.com)", url: "wss://derivws.com/websockets/v3?app_id=1089" }
 ];
 
-function escribir(msg, color = "#38bdf8") {
+function log(msg, color = "#38bdf8") {
   const box = document.getElementById("log");
   const t = new Date().toTimeString().split(" ")[0];
   box.innerHTML += `<div style="color:${color}">[${t}] ${msg}</div>`;
   box.scrollTop = box.scrollHeight;
 }
 
-async function probarServidores() {
+async function ejecutarTest() {
+  const btn = document.getElementById("btnTest");
+  btn.disabled = true;
   document.getElementById("log").innerHTML = "";
-  escribir("Iniciando prueba sobre tu red Wi-Fi...");
+  log("Iniciando escaneo con ventana de tolerancia de 20 segundos...", "#f1f5f9");
 
-  for (const srv of SERVIDORES) {
-    escribir(`Conectando a ${srv.nombre}...`, "#f59e0b");
-    const ok = await testSocket(srv.url);
-    if (ok) {
-      escribir(`✔ ${srv.nombre} FUNCIONA CORRECTAMENTE`, "#34d399");
-      escribir(`Probando petición de ticks en ${srv.nombre}...`, "#f59e0b");
-      await testTicks(srv.url);
+  let conectado = false;
+
+  for (const srv of SERVERS) {
+    log(`Intentando enlace con ${srv.name}...`, "#f59e0b");
+    const resultado = await probarSocket(srv.url);
+
+    if (resultado.ok) {
+      log(`✔ ${srv.name} CONECTÓ con éxito en ${resultado.ms} ms`, "#34d399");
+      log(`Solicitando cotizaciones de prueba (1HZ75V)...`, "#f59e0b");
+      await pedirTicks(srv.url);
+      conectado = true;
       break;
     } else {
-      escribir(`✖ ${srv.nombre} bloqueado o sin respuesta en tu Wi-Fi`, "#f87171");
+      log(`✖ ${srv.name} falló: ${resultado.motivo} (${resultado.ms} ms)`, "#f87171");
     }
   }
+
+  if (!conectado) {
+    log("========================================", "#ef4444");
+    log("DIAGNÓSTICO: Tu proveedor de Wi-Fi o router está bloqueando el tráfico WebSocket hacia Deriv. Prueba desactivar el Wi-Fi momentáneamente en el teléfono y usar datos móviles para verificar el enlace.", "#facc15");
+    log("========================================", "#ef4444");
+  }
+
+  btn.disabled = false;
 }
 
-function testSocket(url) {
+function probarSocket(url) {
   return new Promise((resolve) => {
-    try {
-      const s = new WebSocket(url);
-      const timer = setTimeout(() => {
-        try { s.close(); } catch(e){}
-        resolve(false);
-      }, 5000);
+    const start = Date.now();
+    let terminado = false;
 
-      s.onopen = () => {
-        clearTimeout(timer);
-        try { s.close(); } catch(e){}
-        resolve(true);
-      };
-      s.onerror = () => {
-        clearTimeout(timer);
-        resolve(false);
-      };
-    } catch(e) {
-      resolve(false);
+    let socket;
+    try {
+      socket = new WebSocket(url);
+    } catch(err) {
+      return resolve({ ok: false, motivo: err.message, ms: Date.now() - start });
     }
+
+    const timer = setTimeout(() => {
+      if (!terminado) {
+        terminado = true;
+        try { socket.close(); } catch(e){}
+        resolve({ ok: false, motivo: "Timeout tras 20 segundos sin respuesta del servidor", ms: Date.now() - start });
+      }
+    }, 20000);
+
+    socket.onopen = () => {
+      if (!terminado) {
+        terminado = true;
+        clearTimeout(timer);
+        try { socket.close(); } catch(e){}
+        resolve({ ok: true, ms: Date.now() - start });
+      }
+    };
+
+    socket.onerror = () => {
+      if (!terminado) {
+        terminado = true;
+        clearTimeout(timer);
+        resolve({ ok: false, motivo: "Rechazo de handshake / Error de red", ms: Date.now() - start });
+      }
+    };
   });
 }
 
-function testTicks(url) {
+function pedirTicks(url) {
   return new Promise((resolve) => {
     const s = new WebSocket(url);
     s.onopen = () => {
@@ -90,17 +123,17 @@ function testTicks(url) {
       }));
     };
     s.onmessage = (e) => {
-      const res = JSON.parse(e.data);
-      if (res.history) {
-        escribir(`✔ Ticks recibidos: Último precio = ${res.history.prices.slice(-1)[0]}`, "#34d399");
-      } else if (res.error) {
-        escribir(`Respuesta Deriv: ${res.error.message}`, "#f87171");
+      const data = JSON.parse(e.data);
+      if (data.history && data.history.prices) {
+        log(`✔ Ticks recibidos: Último precio = ${data.history.prices.slice(-1)[0]}`, "#34d399");
+      } else if (data.error) {
+        log(`Aviso Deriv: ${data.error.message}`, "#facc15");
       }
       s.close();
       resolve();
     };
     s.onerror = () => {
-      escribir("Error al solicitar ticks", "#f87171");
+      log("Error al pedir ticks tras conexión.", "#f87171");
       resolve();
     };
   });
