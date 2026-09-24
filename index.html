@@ -2,366 +2,108 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Extractor de Ticks Deriv (Oficial)</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Conexión Wi-Fi Deriv</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: #090d16;
-      color: #f1f5f9;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      padding: 14px;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-    .card {
-      background: #1e293b;
-      padding: 18px;
-      border-radius: 12px;
-      width: 100%;
-      max-width: 480px;
-      margin: 0 auto;
-      border: 1px solid #334155;
-    }
-    h2 { color: #38bdf8; font-size: 1.15rem; margin-bottom: 4px; }
-    p { color: #94a3b8; font-size: 0.78rem; margin-bottom: 12px; }
-    
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: #064e3b;
-      color: #34d399;
-      font-size: 0.72rem;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-family: monospace;
-      margin-bottom: 12px;
-    }
-    .badge.busy { background: #451a03; color: #f59e0b; }
-    .badge.err { background: #450a0a; color: #f87171; }
-    .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-
-    .form-group { margin-bottom: 10px; }
-    label { display: block; font-size: 0.75rem; color: #cbd5e1; margin-bottom: 4px; font-weight: 600; }
-    select, input {
-      width: 100%;
-      background: #0f172a;
-      border: 1px solid #334155;
-      padding: 10px;
-      border-radius: 8px;
-      color: #fff;
-      font-size: 0.88rem;
-      font-family: monospace;
-      outline: none;
-    }
-
-    button {
-      width: 100%;
-      background: #2563eb;
-      color: white;
-      border: none;
-      padding: 12px;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      font-weight: 700;
-      cursor: pointer;
-      margin-top: 6px;
-    }
-    button:disabled { background: #475569; }
-    .btn-stop { background: #dc2626; }
-
-    .progress-track {
-      background: #0f172a;
-      border-radius: 6px;
-      height: 10px;
-      overflow: hidden;
-      margin: 14px 0 6px 0;
-      border: 1px solid #334155;
-    }
-    .progress-fill { height: 100%; width: 0%; background: #38bdf8; transition: width 0.15s; }
-    
-    .stats-line {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.75rem;
-      color: #94a3b8;
-      font-family: monospace;
-      margin-bottom: 10px;
-    }
-    #console {
-      background: #020617;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      padding: 10px;
-      font-family: monospace;
-      font-size: 0.72rem;
-      height: 140px;
-      overflow-y: auto;
-      color: #a5f3fc;
-    }
+    body { background: #090d16; color: #f1f5f9; font-family: sans-serif; padding: 20px; }
+    .card { background: #1e293b; padding: 20px; border-radius: 12px; max-width: 450px; margin: 0 auto; border: 1px solid #334155; }
+    button { width: 100%; padding: 14px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; margin-top: 10px; cursor: pointer; }
+    #log { background: #020617; border: 1px solid #334155; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.75rem; height: 220px; overflow-y: auto; color: #38bdf8; margin-top: 15px; }
   </style>
 </head>
 <body>
 
 <div class="card">
-  <h2>Extractor de Ticks Deriv API v3</h2>
-  <p>Conexión según especificación oficial developers.deriv.com</p>
-
-  <div id="statusBadge" class="badge">
-    <span class="dot"></span>
-    <span id="badgeText">Listo para conectar</span>
-  </div>
-
-  <div class="form-group">
-    <label>Activo:</label>
-    <select id="assetSelect">
-      <option value="1HZ75V" selected>1HZ75V (Volatility 75 1s)</option>
-      <option value="1HZ10V">1HZ10V (Volatility 10 1s)</option>
-      <option value="1HZ100V">1HZ100V (Volatility 100 1s)</option>
-      <option value="R_75">R_75 (Volatility 75 2s)</option>
-      <option value="R_100">R_100 (Volatility 100 2s)</option>
-    </select>
-  </div>
-
-  <div class="form-group">
-    <label>Cantidad de Ticks:</label>
-    <input type="number" id="targetCount" value="100000" step="5000" min="5000">
-  </div>
-
-  <button id="btnStart" onclick="iniciar()">▶ Iniciar Descarga de Ticks</button>
-  <button id="btnStop" class="btn-stop" onclick="detener()" style="display:none;">⏹ Detener y Guardar</button>
-
-  <div class="progress-track">
-    <div id="bar" class="progress-fill"></div>
-  </div>
-
-  <div class="stats-line">
-    <span id="statCount">Ticks: 0 / 100.000</span>
-    <span id="statPct">0%</span>
-  </div>
-
-  <div id="console">> Presiona Iniciar para conectar con Deriv...</div>
+  <h3>Diagnóstico Wi-Fi Deriv API</h3>
+  <p style="font-size:0.8rem; color:#94a3b8;">Verifica qué servidor responde en tu red Wi-Fi con el App ID numérico oficial (1089).</p>
+  
+  <button onclick="probarServidores()">Probar Conexión Wi-Fi</button>
+  <div id="log">> Pulsa el botón para probar los servidores en tu Wi-Fi...</div>
 </div>
 
 <script>
-// Endpoints conformes a la especificación de Deriv API v3
-const SERVERS = [
-  'wss://ws.derivws.com/websockets/v3?app_id=1089',
-  'wss://ws.binaryws.com/websockets/v3?app_id=1089'
+const SERVIDORES = [
+  { nombre: "Servidor Oficial", url: "wss://ws.derivws.com/websockets/v3?app_id=1089" },
+  { nombre: "Servidor Clásico (Binary)", url: "wss://ws.binaryws.com/websockets/v3?app_id=1089" },
+  { nombre: "Servidor Red", url: "wss://red.derivws.com/websockets/v3?app_id=1089" }
 ];
-const BATCH_SIZE = 5000;
 
-let ws = null;
-let allTicks = [];
-let currentEnd = 'latest';
-let isRunning = false;
-let selectedSymbol = '1HZ75V';
-let targetTicks = 100000;
-let srvIndex = 0;
-let connectTimeout = null;
-
-function log(msg, color = '#a5f3fc') {
-  const el = document.getElementById('console');
-  const t = new Date().toTimeString().split(' ')[0];
-  el.innerHTML += `<div style="color:${color}">[${t}] ${msg}</div>`;
-  el.scrollTop = el.scrollHeight;
+function escribir(msg, color = "#38bdf8") {
+  const box = document.getElementById("log");
+  const t = new Date().toTimeString().split(" ")[0];
+  box.innerHTML += `<div style="color:${color}">[${t}] ${msg}</div>`;
+  box.scrollTop = box.scrollHeight;
 }
 
-function updateProgress(count) {
-  const pct = Math.min(100, Math.round((count / targetTicks) * 100));
-  document.getElementById('bar').style.width = pct + '%';
-  document.getElementById('statCount').innerText = `${count.toLocaleString()} / ${targetTicks.toLocaleString()}`;
-  document.getElementById('statPct').innerText = `${pct}%`;
-}
+async function probarServidores() {
+  document.getElementById("log").innerHTML = "";
+  escribir("Iniciando prueba sobre tu red Wi-Fi...");
 
-function setBadge(text, type = 'normal') {
-  const b = document.getElementById('statusBadge');
-  document.getElementById('badgeText').innerText = text;
-  b.className = 'badge ' + (type === 'err' ? 'err' : (type === 'busy' ? 'busy' : ''));
-}
-
-function limpiar() {
-  if (connectTimeout) {
-    clearTimeout(connectTimeout);
-    connectTimeout = null;
-  }
-  if (ws) {
-    ws.onopen = null;
-    ws.onmessage = null;
-    ws.onerror = null;
-    ws.onclose = null;
-    try { ws.close(); } catch(e){}
-    ws = null;
-  }
-}
-
-function iniciar() {
-  if (isRunning) return;
-
-  selectedSymbol = document.getElementById('assetSelect').value;
-  targetTicks = parseInt(document.getElementById('targetCount').value, 10) || 100000;
-
-  isRunning = true;
-  allTicks = [];
-  currentEnd = 'latest';
-  srvIndex = 0;
-  updateProgress(0);
-
-  document.getElementById('btnStart').style.display = 'none';
-  document.getElementById('btnStop').style.display = 'block';
-  document.getElementById('assetSelect').disabled = true;
-  document.getElementById('targetCount').disabled = true;
-
-  conectar();
-}
-
-function conectar() {
-  if (!isRunning) return;
-  limpiar();
-
-  const url = SERVERS[srvIndex];
-  setBadge('Conectando...', 'busy');
-  log(`Conectando a Deriv API (${url.split('//')[1].split('/')[0]})...`, '#38bdf8');
-
-  // Timeout de 15 segundos para dar margen suficiente a redes 4G
-  connectTimeout = setTimeout(() => {
-    log('Demora en el servidor actual. Probando respaldo...', '#f59e0b');
-    rotarServidor();
-  }, 15000);
-
-  try {
-    ws = new WebSocket(url);
-  } catch(e) {
-    rotarServidor();
-    return;
-  }
-
-  ws.onopen = () => {
-    if (connectTimeout) {
-      clearTimeout(connectTimeout);
-      connectTimeout = null;
+  for (const srv of SERVIDORES) {
+    escribir(`Conectando a ${srv.nombre}...`, "#f59e0b");
+    const ok = await testSocket(srv.url);
+    if (ok) {
+      escribir(`✔ ${srv.nombre} FUNCIONA CORRECTAMENTE`, "#34d399");
+      escribir(`Probando petición de ticks en ${srv.nombre}...`, "#f59e0b");
+      await testTicks(srv.url);
+      break;
+    } else {
+      escribir(`✖ ${srv.nombre} bloqueado o sin respuesta en tu Wi-Fi`, "#f87171");
     }
-    setBadge('Conectado');
-    log(`✔ Canal abierto. Solicitando lotes de ${selectedSymbol}...`, '#4ade80');
-    solicitarLote();
-  };
+  }
+}
 
-  ws.onmessage = (event) => {
-    if (!isRunning) return;
-
+function testSocket(url) {
+  return new Promise((resolve) => {
     try {
-      const data = JSON.parse(event.data);
+      const s = new WebSocket(url);
+      const timer = setTimeout(() => {
+        try { s.close(); } catch(e){}
+        resolve(false);
+      }, 5000);
 
-      if (data.error) {
-        log(`Error: ${data.error.message}`, '#ef4444');
-        rotarServidor();
-        return;
-      }
-
-      if (data.msg_type === 'history') {
-        const times = data.history.times || [];
-        const prices = data.history.prices || [];
-
-        if (!times.length) {
-          log('Fin del historial disponible.', '#facc15');
-          finalizar(true);
-          return;
-        }
-
-        const batch = times.map((t, i) => ({ epoch: t, price: prices[i] }));
-        allTicks = batch.concat(allTicks);
-
-        updateProgress(allTicks.length);
-        log(`Descargados: ${allTicks.length.toLocaleString()} / ${targetTicks.toLocaleString()} ticks`);
-
-        if (allTicks.length >= targetTicks) {
-          allTicks = allTicks.slice(allTicks.length - targetTicks);
-          finalizar(true);
-        } else {
-          currentEnd = times[0] - 1;
-          setTimeout(solicitarLote, 150);
-        }
-      }
+      s.onopen = () => {
+        clearTimeout(timer);
+        try { s.close(); } catch(e){}
+        resolve(true);
+      };
+      s.onerror = () => {
+        clearTimeout(timer);
+        resolve(false);
+      };
     } catch(e) {
-      console.error(e);
+      resolve(false);
     }
-  };
-
-  ws.onerror = () => {
-    log('Aviso de red móvil en este nodo.', '#ef4444');
-    rotarServidor();
-  };
-
-  ws.onclose = () => {
-    if (isRunning && allTicks.length < targetTicks) {
-      rotarServidor();
-    }
-  };
+  });
 }
 
-function rotarServidor() {
-  if (!isRunning) return;
-  limpiar();
-  srvIndex = (srvIndex + 1) % SERVERS.length;
-  setTimeout(conectar, 1000);
-}
-
-function solicitarLote() {
-  if (!ws || ws.readyState !== WebSocket.OPEN || !isRunning) return;
-  ws.send(JSON.stringify({
-    ticks_history: selectedSymbol,
-    adjust_start_time: 1,
-    count: BATCH_SIZE,
-    end: currentEnd,
-    style: 'ticks'
-  }));
-}
-
-function detener() {
-  if (!isRunning) return;
-  log('Descarga detenida. Guardando datos...', '#f59e0b');
-  finalizar(allTicks.length > 0);
-}
-
-function finalizar(descargar) {
-  isRunning = false;
-  limpiar();
-
-  document.getElementById('btnStart').style.display = 'block';
-  document.getElementById('btnStop').style.display = 'none';
-  document.getElementById('assetSelect').disabled = false;
-  document.getElementById('targetCount').disabled = false;
-
-  if (descargar && allTicks.length > 0) {
-    guardarCSV();
-  }
-}
-
-function guardarCSV() {
-  log(`Generando CSV con ${allTicks.length.toLocaleString()} ticks...`, '#38bdf8');
-
-  let csv = 'epoch,datetime_utc,symbol,price\n';
-  for (let i = 0; i < allTicks.length; i++) {
-    const t = allTicks[i];
-    const iso = new Date(t.epoch * 1000).toISOString();
-    csv += `${t.epoch},${iso},${selectedSymbol},${t.price}\n`;
-  }
-
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `deriv_${selectedSymbol}_${allTicks.length}k_${Date.now()}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-
-  log(`✔ Archivo descargado en tu teléfono con éxito.`, '#4ade80');
+function testTicks(url) {
+  return new Promise((resolve) => {
+    const s = new WebSocket(url);
+    s.onopen = () => {
+      s.send(JSON.stringify({
+        ticks_history: "1HZ75V",
+        adjust_start_time: 1,
+        count: 5,
+        end: "latest",
+        style: "ticks"
+      }));
+    };
+    s.onmessage = (e) => {
+      const res = JSON.parse(e.data);
+      if (res.history) {
+        escribir(`✔ Ticks recibidos: Último precio = ${res.history.prices.slice(-1)[0]}`, "#34d399");
+      } else if (res.error) {
+        escribir(`Respuesta Deriv: ${res.error.message}`, "#f87171");
+      }
+      s.close();
+      resolve();
+    };
+    s.onerror = () => {
+      escribir("Error al solicitar ticks", "#f87171");
+      resolve();
+    };
+  });
 }
 </script>
 </body>
