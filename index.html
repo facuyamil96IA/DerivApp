@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Deriv Modern Options API Suite</title>
+  <title>Deriv Trading Suite - Pure WebSocket</title>
   <style>
     :root {
       --bg: #090d16;
@@ -77,11 +77,11 @@
     }
     .auth-row {
       display: grid;
-      grid-template-columns: 1fr auto auto;
+      grid-template-columns: 1fr auto;
       gap: 10px;
       align-items: flex-end;
     }
-    @media (max-width: 768px) { .auth-row { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { .auth-row { grid-template-columns: 1fr; } }
     
     label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px; }
     input, select {
@@ -112,6 +112,16 @@
     .btn-green:hover:not(:disabled) { background: #268036; }
     .btn-red { background: var(--red); }
     .btn-red:hover:not(:disabled) { background: #d33c33; }
+
+    .account-strip {
+      display: grid;
+      grid-template-columns: 2fr 1fr auto;
+      gap: 10px;
+      align-items: flex-end;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    @media (max-width: 768px) { .account-strip { grid-template-columns: 1fr; } }
 
     .kpi-grid {
       display: grid;
@@ -201,8 +211,8 @@
     <div style="display: flex; align-items: center; gap: 10px;">
       <span class="badge-sym" id="badgeAsset">1HZ75V</span>
       <div>
-        <h2 style="font-size: 1.05rem; color:#fff;">Deriv Options API v1 (Modern Stack)</h2>
-        <p style="font-size: 0.72rem; color: var(--text-muted);">wss://api.derivws.com/trading/v1/options · Cero dependencias v3 legacy</p>
+        <h2 style="font-size: 1.05rem; color:#fff;">Deriv Platform - WebSocket Direct</h2>
+        <p style="font-size: 0.72rem; color: var(--text-muted);">Sin bloqueos CORS · Autenticación nativa con Token PAT</p>
       </div>
     </div>
     <div style="display: flex; gap: 8px; align-items: center;">
@@ -211,12 +221,12 @@
         <span id="wsStatus">Desconectado</span>
       </div>
       <div class="status-pill" style="color: var(--cyan);">
-        <span>Cuenta: </span><strong id="lblActiveAccount">Público / Simulación</strong>
+        <span>Cuenta: </span><strong id="lblActiveAccount">Ninguna</strong>
       </div>
     </div>
   </header>
 
-  <!-- Autenticación y Cuentas -->
+  <!-- Autenticación pura WebSocket -->
   <div class="auth-card">
     <div class="auth-row">
       <div>
@@ -224,25 +234,22 @@
         <input type="password" id="cfgToken" value="pat_cf363ab19a46e65088da18ac183dc690a4acc7b950790d54dcc932aafccf493d">
       </div>
       <div>
-        <button id="btnFetchAccounts" class="btn" onclick="consultarCuentas()">1. Identificar Cuentas</button>
-      </div>
-      <div>
-        <button id="btnConnectPublic" class="btn btn-green" onclick="conectarPublico()">Modo Público (Ver Ticks Ya)</button>
+        <button id="btnAuth" class="btn btn-green" onclick="iniciarConexionWebSocket()">Conectar y Cargar Cuentas</button>
       </div>
     </div>
 
-    <!-- Cuentas Encontradas -->
-    <div id="rowAccounts" style="display: none; grid-template-columns: 2fr 1fr auto; gap: 10px; border-top: 1px solid var(--border); padding-top: 10px;">
+    <!-- Selector de cuentas encontradas en el handshake -->
+    <div class="account-strip" id="stripAccounts" style="display: none;">
       <div>
-        <label>Cuentas Disponibles (Options v1)</label>
-        <select id="selAccounts" onchange="seleccionarCuenta()"></select>
+        <label>Cuentas Disponibles en tu Perfil</label>
+        <select id="selAccounts" onchange="cambiarCuentaActiva()"></select>
       </div>
       <div>
-        <label>Tipo</label>
+        <label>Entorno</label>
         <input type="text" id="txtAccountType" readonly style="opacity: 0.85;">
       </div>
-      <div style="display: flex; gap: 8px; align-items: flex-end;">
-        <button id="btnConnectAuth" class="btn btn-green" onclick="conectarWebSocketAuth()">2. Conectar Cuenta</button>
+      <div>
+        <button id="btnDisconnect" class="btn btn-red" onclick="desconectar()">Desconectar</button>
       </div>
     </div>
   </div>
@@ -250,8 +257,8 @@
   <!-- KPIs -->
   <div class="kpi-grid">
     <div class="kpi-card">
-      <div class="kpi-lbl">Balance</div>
-      <div id="kpiBalance" class="kpi-val">$10,000.00</div>
+      <div class="kpi-lbl">Balance de Cuenta</div>
+      <div id="kpiBalance" class="kpi-val">$0.00</div>
       <div id="kpiPnL" class="kpi-sub">PnL Sesión: +$0.00</div>
     </div>
     <div class="kpi-card">
@@ -276,7 +283,7 @@
     </div>
   </div>
 
-  <!-- Panel Central -->
+  <!-- Trading & Bot -->
   <div class="trading-grid">
     <div class="box-card">
       <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -322,7 +329,7 @@
 
     <div class="box-card">
       <h3 style="font-size: 0.9rem; color:#fff;">Operación Manual de Prueba</h3>
-      <p style="font-size: 0.72rem; color: var(--text-muted);">Apertura 1 tick contra el WebSocket conectado.</p>
+      <p style="font-size: 0.72rem; color: var(--text-muted);">Apertura 1 tick directamente en tu cuenta seleccionada.</p>
       
       <div style="display: flex; gap: 10px; margin-top: auto;">
         <button id="btnManualCall" class="btn btn-green" style="flex:1; padding: 14px;" onclick="ejecutarManual('CALL')" disabled>
@@ -335,7 +342,7 @@
     </div>
   </div>
 
-  <!-- Historial -->
+  <!-- Historial de Operaciones -->
   <div class="box-card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
       <h3 style="font-size: 0.9rem; color:#fff;">Diario de Contratos</h3>
@@ -356,32 +363,32 @@
           </tr>
         </thead>
         <tbody id="tblTradesBody">
-          <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 14px;">Esperando operaciones...</td></tr>
+          <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 14px;">Esperando conexión...</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <div id="console">> Conectando al canal público oficial para recibir ticks en vivo...</div>
+  <div id="console">> Presiona "Conectar y Cargar Cuentas" para autenticar mediante WebSocket puro...</div>
 
 </div>
 
 <script>
-const WS_PUBLIC = 'wss://api.derivws.com/trading/v1/options/ws/public';
-const REST_API_BASE = 'https://api.deriv.com/trading/v1/options';
+const WS_ENDPOINT = 'wss://red.derivws.com/websockets/v3?app_id=1089';
 const MULT_MARTINGALE = 2.14;
 
 const state = {
+  token: '',
   ws: null,
   isConnected: false,
-  isAuth: false,
+  isAuthorized: false,
   botRunning: false,
   
   accounts: [],
-  selectedAccount: null,
+  activeAccount: null,
   
   symbol: '1HZ75V',
-  balance: 10000,
+  balance: 0,
   currency: 'USD',
   prices: [],
   epochs: [],
@@ -408,160 +415,172 @@ function setDot(cls, txt) {
   document.getElementById('wsStatus').innerText = txt;
 }
 
-// Iniciar automáticamente en canal público al cargar la página
-window.addEventListener('DOMContentLoaded', () => {
-  conectarPublico();
-});
-
-// 1. Canal Público: Streaming de Ticks Oficial sin tokens ni App ID
-function conectarPublico() {
-  desconectar();
-  setDot('busy', 'Conectando...');
-  log(`Abriendo canal público en ${WS_PUBLIC}...`, '#38bdf8');
-
-  state.ws = new WebSocket(WS_PUBLIC);
-
-  state.ws.onopen = () => {
-    state.isConnected = true;
-    state.isAuth = false;
-    setDot('live', 'Público Activo');
-    document.getElementById('lblActiveAccount').innerText = 'Público / Simulación';
-    document.getElementById('lblActiveAccount').style.color = 'var(--cyan)';
-    document.getElementById('btnManualCall').disabled = false;
-    document.getElementById('btnManualPut').disabled = false;
-    document.getElementById('btnToggleBot').disabled = false;
-
-    log('✔ Conectado a api.derivws.com (Público). Suscribiendo ticks...', '#2ea043');
-    solicitarTicks();
-  };
-
-  state.ws.onmessage = (e) => procesarMensaje(e);
-  state.ws.onerror = () => {
-    log('Error de red en canal público.', '#f87171');
-    setDot('err', 'Error');
-  };
-  state.ws.onclose = () => {
-    log('Canal público cerrado.', '#f0883e');
-    setDot('', 'Desconectado');
-  };
-}
-
-// 2. Autenticación Options API v1: REST GET /accounts -> POST /otp
-async function consultarCuentas() {
-  const token = document.getElementById('cfgToken').value.trim();
-  if (!token) {
-    alert('Introduce un token PAT');
+// Conexión directa pura por WebSocket (cero peticiones HTTP)
+function iniciarConexionWebSocket() {
+  state.token = document.getElementById('cfgToken').value.trim();
+  if (!state.token) {
+    alert('Introduce tu token PAT');
     return;
   }
 
-  log('Consultando cuentas activas vía GET https://api.deriv.com/trading/v1/options/accounts...', '#f0883e');
-  setDot('busy', 'Consultando...');
+  desconectar();
+  setDot('busy', 'Conectando WS...');
+  log('Abriendo canal seguro de WebSocket...', '#38bdf8');
 
   try {
-    const res = await fetch(`${REST_API_BASE}/accounts`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    state.ws = new WebSocket(WS_ENDPOINT);
+  } catch (e) {
+    log(`Error al instanciar WebSocket: ${e.message}`, '#f87171');
+    setDot('err', 'Fallo conexión');
+    return;
+  }
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(`HTTP ${res.status}: ${err.message || res.statusText}`);
+  state.ws.onopen = () => {
+    state.isConnected = true;
+    log('✔ WebSocket conectado. Enviando token PAT para autorización...', '#2ea043');
+    setDot('busy', 'Autenticando...');
+    
+    // Handshake nativo oficial de Deriv
+    state.ws.send(JSON.stringify({ authorize: state.token }));
+  };
+
+  state.ws.onmessage = (evt) => {
+    try {
+      const data = JSON.parse(evt.data);
+      handleWS(data);
+    } catch (e) {
+      console.error(e);
     }
+  };
 
-    const data = await res.json();
-    state.accounts = data.accounts || [];
+  state.ws.onerror = () => {
+    log('Error de red en canal WebSocket.', '#f87171');
+    setDot('err', 'Error');
+  };
 
+  state.ws.onclose = () => {
+    log('Conexión cerrada por el broker.', '#f0883e');
+    desconectar();
+  };
+}
+
+function handleWS(data) {
+  if (data.error) {
+    log(`[DERIV API ERROR]: ${data.error.message}`, '#f87171');
+    if (state.inTrade) state.inTrade = false;
+    return;
+  }
+
+  // 1. Respuesta de Autorización Exitosa
+  if (data.msg_type === 'authorize' && data.authorize) {
+    state.isAuthorized = true;
+    const auth = data.authorize;
+
+    // Extraer lista de cuentas devueltas por el token
+    state.accounts = auth.account_list || [];
     if (state.accounts.length === 0) {
-      log('No se encontraron cuentas de Options registradas para este token.', '#f87171');
-      return;
+      state.accounts = [{
+        loginid: auth.loginid,
+        is_virtual: auth.is_virtual,
+        currency: auth.currency
+      }];
     }
 
+    // Poblar selector de cuentas en pantalla
     const sel = document.getElementById('selAccounts');
     sel.innerHTML = '';
     state.accounts.forEach(acc => {
       const opt = document.createElement('option');
-      opt.value = acc.id;
-      const isDemo = acc.type === 'demo' || acc.id.startsWith('VRTC');
-      opt.innerText = `${acc.id} [${isDemo ? 'DEMO' : 'REAL'}] - Balance: ${acc.balance} ${acc.currency || 'USD'}`;
+      opt.value = acc.loginid;
+      const isDemo = acc.is_virtual === 1 || acc.loginid.startsWith('VRTC');
+      opt.innerText = `${acc.loginid} [${isDemo ? 'DEMO' : 'REAL'}] (${acc.currency || 'USD'})`;
+      if (acc.loginid === auth.loginid) opt.selected = true;
       sel.appendChild(opt);
     });
 
-    document.getElementById('rowAccounts').style.display = 'grid';
-    seleccionarCuenta();
-    log(`✔ ${state.accounts.length} cuenta(s) encontradas. Presiona "2. Conectar Cuenta".`, '#2ea043');
+    document.getElementById('stripAccounts').style.display = 'grid';
+    document.getElementById('btnAuth').style.display = 'none';
 
-  } catch (e) {
-    log(`Aviso REST: ${e.message}`, '#f87171');
+    // Establecer cuenta activa
+    establecerCuentaActiva(auth.loginid, auth.balance, auth.currency, auth.is_virtual);
+
+    // Habilitar controles
+    document.getElementById('btnManualCall').disabled = false;
+    document.getElementById('btnManualPut').disabled = false;
+    document.getElementById('btnToggleBot').disabled = false;
+
+    // Suscribir balance continuo y cotizaciones en vivo
+    state.ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
+    solicitarTicks();
+  }
+
+  // 2. Actualización de Balance en tiempo real
+  if (data.msg_type === 'balance' && data.balance) {
+    state.balance = parseFloat(data.balance.balance);
+    document.getElementById('kpiBalance').innerText = `$${state.balance.toFixed(2)}`;
+  }
+
+  // 3. Historial de Ticks inicial
+  if (data.msg_type === 'history' && data.history) {
+    const times = data.history.times;
+    const prices = data.history.prices;
+    for (let i = 0; i < times.length; i++) {
+      calcularTick(parseFloat(prices[i]), parseInt(times[i], 10), false);
+    }
+    log(`Historial calibrado con ${times.length} ticks.`, '#2ea043');
+  }
+
+  // 4. Tick en streaming
+  if (data.msg_type === 'tick' && data.tick) {
+    calcularTick(parseFloat(data.tick.quote), parseInt(data.tick.epoch, 10), true);
+  }
+
+  // 5. Confirmación de compra de contrato
+  if (data.msg_type === 'buy' && data.buy) {
+    log(`🚀 CONTRATO ABIERTO: #${data.buy.contract_id} por $${parseFloat(data.buy.buy_price).toFixed(2)}`, '#38bdf8');
+    state.ws.send(JSON.stringify({
+      proposal_open_contract: 1,
+      contract_id: data.buy.contract_id,
+      subscribe: 1
+    }));
+  }
+
+  // 6. Monitoreo y liquidación
+  if (data.msg_type === 'proposal_open_contract' && data.proposal_open_contract) {
+    const poc = data.proposal_open_contract;
+    if (poc.is_sold === 1) {
+      liquidarContrato(poc);
+    }
   }
 }
 
-function seleccionarCuenta() {
-  const id = document.getElementById('selAccounts').value;
-  state.selectedAccount = state.accounts.find(a => a.id === id);
-  if (!state.selectedAccount) return;
+function establecerCuentaActiva(loginid, balance, currency, isVirtual) {
+  state.activeAccount = loginid;
+  state.currency = currency || 'USD';
+  if (balance !== undefined) state.balance = parseFloat(balance);
 
-  const isDemo = state.selectedAccount.type === 'demo' || id.startsWith('VRTC');
-  const txt = document.getElementById('txtAccountType');
-  txt.value = isDemo ? 'CUENTA DEMO' : 'CUENTA REAL';
-  txt.style.color = isDemo ? 'var(--cyan)' : 'var(--red)';
+  const isDemo = isVirtual === 1 || loginid.startsWith('VRTC');
+  const txtType = document.getElementById('txtAccountType');
+  txtType.value = isDemo ? 'CUENTA DEMO' : 'CUENTA REAL';
+  txtType.style.color = isDemo ? 'var(--cyan)' : 'var(--red)';
+
+  document.getElementById('lblActiveAccount').innerText = `${loginid} [${isDemo ? 'DEMO' : 'REAL'}]`;
+  document.getElementById('lblActiveAccount').style.color = isDemo ? 'var(--cyan)' : 'var(--red)';
+  document.getElementById('kpiBalance').innerText = `$${state.balance.toFixed(2)}`;
+
+  setDot('live', `${isDemo ? 'DEMO' : 'REAL'} Conectada`);
+  log(`✔ SESIÓN ACTIVA: ${loginid} | Saldo: $${state.balance.toFixed(2)} ${state.currency}`, '#2ea043');
 }
 
-async function conectarWebSocketAuth() {
-  if (!state.selectedAccount) return;
-  const token = document.getElementById('cfgToken').value.trim();
-  const accId = state.selectedAccount.id;
-  const isDemo = state.selectedAccount.type === 'demo' || accId.startsWith('VRTC');
-
-  log(`Generando OTP para cuenta ${accId}...`, '#f0883e');
-  setDot('busy', 'Obteniendo OTP...');
-
-  try {
-    const res = await fetch(`${REST_API_BASE}/accounts/${accId}/otp`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    const otp = data.otp || data.token;
-
-    desconectar();
-    const wsAuthUrl = `wss://api.derivws.com/trading/v1/options/ws/${isDemo ? 'demo' : 'real'}?otp=${otp}`;
-    log(`Conectando WebSocket autenticado a ${isDemo ? 'DEMO' : 'REAL'}...`, '#38bdf8');
-
-    state.ws = new WebSocket(wsAuthUrl);
-
-    state.ws.onopen = () => {
-      state.isConnected = true;
-      state.isAuth = true;
-      state.balance = parseFloat(state.selectedAccount.balance) || 10000;
-      state.currency = state.selectedAccount.currency || 'USD';
-      document.getElementById('kpiBalance').innerText = `$${state.balance.toFixed(2)}`;
-      
-      document.getElementById('lblActiveAccount').innerText = `${accId} [${isDemo ? 'DEMO' : 'REAL'}]`;
-      document.getElementById('lblActiveAccount').style.color = isDemo ? 'var(--cyan)' : 'var(--red)';
-      setDot('live', `${isDemo ? 'DEMO' : 'REAL'} Conectada`);
-      
-      log(`✔ AUTENTICADO: Sesión iniciada en ${accId}.`, '#2ea043');
-      solicitarTicks();
-    };
-
-    state.ws.onmessage = (e) => procesarMensaje(e);
-    state.ws.onerror = () => setDot('err', 'Error');
-    state.ws.onclose = () => desconectar();
-
-  } catch (e) {
-    log(`Error al conectar con OTP: ${e.message}`, '#f87171');
-  }
+function cambiarCuentaActiva() {
+  const selectedLoginId = document.getElementById('selAccounts').value;
+  log(`Cambiando sesión activa a ${selectedLoginId}...`, '#f0883e');
+  // Se envía el loginid para alternar cuenta dentro del mismo WebSocket
+  state.ws.send(JSON.stringify({ authorize: state.token }));
 }
 
 function solicitarTicks() {
+  log(`Suscribiendo streaming de ${state.symbol}...`, '#38bdf8');
   state.ws.send(JSON.stringify({
     ticks_history: state.symbol,
     adjust_start_time: 1,
@@ -572,53 +591,11 @@ function solicitarTicks() {
   }));
 }
 
-// 3. Procesamiento de Mensajes
-function procesarMensaje(evt) {
-  try {
-    const data = JSON.parse(evt.data);
-
-    if (data.error) {
-      log(`[DERIV ERROR]: ${data.error.message}`, '#f87171');
-      if (state.inTrade) state.inTrade = false;
-      return;
-    }
-
-    if (data.msg_type === 'history' && data.history) {
-      const times = data.history.times;
-      const prices = data.history.prices;
-      for (let i = 0; i < times.length; i++) {
-        procesarTick(parseFloat(prices[i]), parseInt(times[i], 10), false);
-      }
-      log(`Buffer cargado con ${times.length} ticks.`, '#2ea043');
-    }
-
-    if (data.msg_type === 'tick' && data.tick) {
-      procesarTick(parseFloat(data.tick.quote), parseInt(data.tick.epoch, 10), true);
-    }
-
-    if (data.msg_type === 'buy' && data.buy) {
-      log(`🚀 ORDEN ABIERTA: #${data.buy.contract_id}`, '#38bdf8');
-      state.ws.send(JSON.stringify({
-        proposal_open_contract: 1,
-        contract_id: data.buy.contract_id,
-        subscribe: 1
-      }));
-    }
-
-    if (data.msg_type === 'proposal_open_contract' && data.proposal_open_contract) {
-      const poc = data.proposal_open_contract;
-      if (poc.is_sold === 1) liquidarContrato(poc);
-    }
-
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-// 4. Motor Estadístico Z-Score
-function procesarTick(price, epoch, disparar) {
+// Motor Estadístico Z-Score
+function calcularTick(price, epoch, permitirDisparo) {
   state.prices.push(price);
   state.epochs.push(epoch);
+
   if (state.prices.length > 70) {
     state.prices.shift();
     state.epochs.shift();
@@ -654,74 +631,61 @@ function procesarTick(price, epoch, disparar) {
     const pct = ((clamped + 4) / 8) * 100;
     document.getElementById('gaugeCursor').style.left = `${pct}%`;
 
-    if (disparar && state.botRunning && !state.inTrade) {
-      evaluarTrigger(z, epoch);
+    if (permitirDisparo && state.botRunning && !state.inTrade) {
+      evaluarGatillo(z, epoch);
     }
   }
 }
 
-function evaluarTrigger(z, epoch) {
+function evaluarGatillo(z, epoch) {
   if (epoch - state.lastTradeEpoch < 3) return;
 
   const isPut = z >= 3.2;
   const isCall = z <= -3.2;
+
   if (!isPut && !isCall) return;
+
+  const tp = parseFloat(document.getElementById('cfgTP').value) || 5.0;
+  const sl = parseFloat(document.getElementById('cfgSL').value) || 5.0;
+  if (state.netPnL >= tp || state.netPnL <= -sl) {
+    log('Objetivo o Stop Loss de sesión alcanzado. Bot pausado.', '#f0883e');
+    toggleBot();
+    return;
+  }
 
   state.inTrade = true;
   state.lastTradeEpoch = epoch;
-  const dir = isCall ? 'CALL' : 'PUT';
-  log(`⚡ DISPARO: Z = ${z.toFixed(2)}σ -> ${dir} ($${state.currentStake.toFixed(2)})`, '#f0883e');
+  const direction = isCall ? 'CALL' : 'PUT';
+  log(`⚡ DISPARO AUTOMÁTICO: Z = ${z.toFixed(2)}σ -> ${direction} ($${state.currentStake.toFixed(2)})...`, '#f0883e');
 
-  enviarOrden(dir, state.currentStake);
+  enviarOrden(direction, state.currentStake);
 }
 
-function ejecutarManual(dir) {
-  const stake = parseFloat(document.getElementById('cfgBaseStake').value) || 0.35;
-  log(`Manual: Enviando ${dir} ($${stake.toFixed(2)})...`, '#38bdf8');
-  enviarOrden(dir, stake);
-}
-
-function enviarOrden(dir, amount) {
-  if (state.isAuth) {
-    // Orden con WebSocket autenticado
-    state.ws.send(JSON.stringify({
-      buy: 1,
-      price: amount,
-      parameters: {
-        amount: amount,
-        basis: 'stake',
-        contract_type: dir,
-        currency: state.currency,
-        duration: 1,
-        duration_unit: 't',
-        symbol: state.symbol
-      }
-    }));
-  } else {
-    // Simulación local
-    simularLiquidacion(dir, amount);
+function ejecutarManual(direction) {
+  if (!state.isConnected || !state.isAuthorized) {
+    alert('Conecta primero tu cuenta para operar.');
+    return;
   }
+  const stake = parseFloat(document.getElementById('cfgBaseStake').value) || 0.35;
+  log(`Enviando orden manual ${direction} por $${stake.toFixed(2)}...`, '#38bdf8');
+  enviarOrden(direction, stake);
 }
 
-function simularLiquidacion(dir, amount) {
-  const entryPrice = state.prices[state.prices.length - 1];
-  const tradeId = Math.floor(100000000 + Math.random() * 900000000);
-  
-  setTimeout(() => {
-    const exitPrice = state.prices[state.prices.length - 1];
-    const isWin = (dir === 'CALL' && exitPrice > entryPrice) || (dir === 'PUT' && exitPrice < entryPrice);
-    const profit = isWin ? parseFloat((amount * 0.88).toFixed(2)) : -amount;
-
-    liquidarContrato({
-      contract_id: tradeId,
-      purchase_time: Math.floor(Date.now() / 1000),
-      contract_type: dir,
-      buy_price: amount,
-      entry_tick: entryPrice,
-      exit_tick: exitPrice,
-      profit: profit
-    });
-  }, 1000);
+function enviarOrden(direction, amount) {
+  const req = {
+    buy: 1,
+    price: amount,
+    parameters: {
+      amount: amount,
+      basis: 'stake',
+      contract_type: direction,
+      currency: state.currency,
+      duration: 1,
+      duration_unit: 't',
+      symbol: state.symbol
+    }
+  };
+  state.ws.send(JSON.stringify(req));
 }
 
 function liquidarContrato(poc) {
@@ -731,33 +695,33 @@ function liquidarContrato(poc) {
 
   if (isWin) {
     state.wins++;
-    log(`✅ GANADA: #${poc.contract_id} | +$${profit.toFixed(2)}`, '#2ea043');
+    log(`✅ GANADA: #${poc.contract_id} | Beneficio: +$${profit.toFixed(2)}`, '#2ea043');
     state.level = 1;
     state.currentStake = parseFloat(document.getElementById('cfgBaseStake').value) || 0.35;
   } else {
     state.losses++;
-    log(`❌ PERDIDA: #${poc.contract_id} | -$${Math.abs(profit).toFixed(2)}`, '#f87171');
+    log(`❌ PERDIDA: #${poc.contract_id} | Pérdida: -$${Math.abs(profit).toFixed(2)}`, '#f87171');
     if (state.level < 3) {
       state.level++;
       state.currentStake = parseFloat((state.currentStake * MULT_MARTINGALE).toFixed(2));
-      log(`[MARTINGALA] Nivel ${state.level} ($${state.currentStake.toFixed(2)})`, '#f0883e');
+      log(`[MARTINGALA] Siguiente nivel: L${state.level} ($${state.currentStake.toFixed(2)})`, '#f0883e');
     } else {
-      log('[MARTINGALA] Cap Nivel 3. Reiniciando a Nivel 1.', '#f87171');
+      log('[MARTINGALA] Cap L3 alcanzado. Reiniciando a Nivel 1.', '#f87171');
       state.level = 1;
       state.currentStake = parseFloat(document.getElementById('cfgBaseStake').value) || 0.35;
     }
   }
 
   state.netPnL += profit;
-  state.balance += profit;
-  document.getElementById('kpiBalance').innerText = `$${state.balance.toFixed(2)}`;
   actualizarMetricas();
   agregarFilaHistorial(poc, isWin);
 }
 
 function agregarFilaHistorial(poc, isWin) {
   const tbody = document.getElementById('tblTradesBody');
-  if (tbody.children.length === 1 && tbody.children[0].children.length === 1) tbody.innerHTML = '';
+  if (tbody.children.length === 1 && tbody.children[0].children.length === 1) {
+    tbody.innerHTML = '';
+  }
 
   const tr = document.createElement('tr');
   const t = new Date(poc.purchase_time * 1000).toTimeString().split(' ')[0];
@@ -781,20 +745,26 @@ function actualizarMetricas() {
   document.getElementById('kpiWinLoss').innerText = `${state.wins}W / ${state.losses}L (${total} Totales)`;
   
   const pnlEl = document.getElementById('kpiPnL');
-  pnlEl.innerText = `PnL: ${state.netPnL >= 0 ? '+' : ''}$${state.netPnL.toFixed(2)}`;
+  pnlEl.innerText = `PnL Sesión: ${state.netPnL >= 0 ? '+' : ''}$${state.netPnL.toFixed(2)}`;
   pnlEl.className = state.netPnL >= 0 ? 'kpi-sub txt-green' : 'kpi-sub txt-red';
 
   document.getElementById('kpiLevel').innerText = `Nivel ${state.level}`;
-  document.getElementById('kpiNextStake').innerText = `Próximo: $${state.currentStake.toFixed(2)}`;
+  document.getElementById('kpiNextStake').innerText = `Próximo Stake: $${state.currentStake.toFixed(2)}`;
   document.getElementById('lblTradeCount').innerText = `${total} operaciones`;
 }
 
 function toggleBot() {
   state.botRunning = !state.botRunning;
   const btn = document.getElementById('btnToggleBot');
-  btn.innerText = state.botRunning ? '⏸ Pausar Bot' : '▶ Iniciar Bot Automático';
-  btn.className = state.botRunning ? 'btn btn-red' : 'btn btn-green';
-  log(state.botRunning ? '▶ BOT ACTIVO: Monitoreando microestructura...' : '⏸ BOT PAUSADO.', state.botRunning ? '#2ea043' : '#f0883e');
+  if (state.botRunning) {
+    btn.innerText = '⏸ Pausar Bot Automático';
+    btn.className = 'btn btn-red';
+    log('▶ BOT ACTIVADO: Monitoreando microestructura en tiempo real...', '#2ea043');
+  } else {
+    btn.innerText = '▶ Iniciar Bot Automático';
+    btn.className = 'btn btn-green';
+    log('⏸ BOT PAUSADO por el usuario.', '#f0883e');
+  }
 }
 
 function cambiarActivo() {
@@ -803,7 +773,9 @@ function cambiarActivo() {
   state.prices = [];
   state.epochs = [];
   state.returns = [];
-  if (state.isConnected && state.ws) solicitarTicks();
+  if (state.isConnected && state.ws) {
+    solicitarTicks();
+  }
 }
 
 function desconectar() {
@@ -812,9 +784,14 @@ function desconectar() {
     state.ws = null;
   }
   state.isConnected = false;
-  state.isAuth = false;
+  state.isAuthorized = false;
   state.botRunning = false;
+  document.getElementById('btnAuth').style.display = 'inline-block';
+  document.getElementById('stripAccounts').style.display = 'none';
+  document.getElementById('btnManualCall').disabled = true;
+  document.getElementById('btnManualPut').disabled = true;
   document.getElementById('btnToggleBot').disabled = true;
+  document.getElementById('lblActiveAccount').innerText = 'Ninguna';
   setDot('', 'Desconectado');
 }
 </script>
