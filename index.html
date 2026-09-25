@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Deriv Options API v1 - Suite de Trading</title>
   <style>
-    /* ... (tus estilos originales se mantienen intactos) ... */
     :root {
       --bg: #090d16; --card: #151b23; --card-alt: #0d1117; --border: #30363d;
       --primary: #2563eb; --primary-hover: #1d4ed8; --green: #2ea043;
@@ -13,7 +12,7 @@
       --text: #f1f5f9; --text-muted: #94a3b8;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; padding: 16px; }
+    body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; padding: 16px; min-height: 100vh; }
     .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
     header { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
     .badge-sym { background: rgba(56, 189, 248, 0.15); color: var(--cyan); border: 1px solid rgba(56, 189, 248, 0.3); padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 0.85rem; }
@@ -24,8 +23,8 @@
     .dot.err { background: var(--red); }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
     .auth-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
-    .auth-row { display: grid; grid-template-columns: 2fr 1.2fr auto; gap: 10px; align-items: flex-end; }
-    @media (max-width: 768px) { .auth-row { grid-template-columns: 1fr; } }
+    .auth-row { display: grid; grid-template-columns: 1.8fr 1fr 1.2fr auto; gap: 10px; align-items: flex-end; }
+    @media (max-width: 900px) { .auth-row { grid-template-columns: 1fr; } }
     label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px; }
     input, select { width: 100%; background: var(--card-alt); border: 1px solid var(--border); border-radius: 6px; padding: 9px 12px; color: #fff; font-size: 0.85rem; font-family: monospace; }
     .btn { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; font-size: 0.82rem; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
@@ -56,6 +55,7 @@
     .pill { display: inline-block; padding: 2px 5px; border-radius: 4px; font-weight: 700; font-size: 0.68rem; }
     .pill-win { background: rgba(46, 160, 67, 0.2); color: var(--green); border: 1px solid var(--green); }
     .pill-loss { background: rgba(248, 81, 73, 0.2); color: var(--red); border: 1px solid var(--red); }
+    .pill-pending { background: rgba(240, 136, 62, 0.2); color: var(--amber); border: 1px solid var(--amber); }
     #console { background: #020617; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-family: monospace; font-size: 0.73rem; height: 140px; overflow-y: auto; color: var(--cyan); }
   </style>
 </head>
@@ -63,13 +63,12 @@
 
 <div class="container">
 
-  <!-- Header -->
   <header>
     <div style="display: flex; align-items: center; gap: 10px;">
       <span class="badge-sym" id="badgeAsset">1HZ75V</span>
       <div>
         <h2 style="font-size: 1.05rem; color:#fff;">Deriv Options API v1 (Tokens PAT)</h2>
-        <p style="font-size: 0.72rem; color: var(--text-muted);">Enlace directo a cuentas DOT (Demo) y ROT (Real) mediante OTP seguro</p>
+        <p style="font-size: 0.72rem; color: var(--text-muted);">Flujo Proposal → Buy con OTP seguro</p>
       </div>
     </div>
     <div style="display: flex; gap: 8px; align-items: center;">
@@ -83,11 +82,10 @@
     </div>
   </header>
 
-  <!-- Autenticación OTP Options API v1 -->
   <div class="auth-card">
     <div class="auth-row">
       <div>
-        <label>Token PAT (Personal Access Token)</label>
+        <label>Token PAT</label>
         <input type="password" id="cfgToken" value="pat_cce87dee2e6947e8383e44006393f05f59459b66fd25ddfb819bc6a1dc50d154">
       </div>
       <div>
@@ -95,23 +93,22 @@
         <input type="text" id="cfgAppId" value="34sXT58c5CvohLOUewrMU">
       </div>
       <div>
-        <label>Cuenta de Trading</label>
+        <label>Cuenta</label>
         <select id="selAccount">
           <option value="DOT91938218|demo" selected>DOT91938218 (Demo)</option>
           <option value="ROT90816370|real">ROT90816370 (Real)</option>
         </select>
       </div>
       <div style="display: flex; gap: 8px;">
-        <button id="btnConnect" class="btn btn-green" onclick="conectarCuentaOptions()">Conectar e Iniciar</button>
+        <button id="btnConnect" class="btn btn-green" onclick="conectarCuentaOptions()">Conectar</button>
         <button id="btnDisconnect" class="btn btn-red" onclick="desconectar()" style="display: none;">Desconectar</button>
       </div>
     </div>
   </div>
 
-  <!-- KPIs -->
   <div class="kpi-grid">
     <div class="kpi-card">
-      <div class="kpi-lbl">Balance de Cuenta</div>
+      <div class="kpi-lbl">Balance</div>
       <div id="kpiBalance" class="kpi-val">$0.00</div>
       <div id="kpiPnL" class="kpi-sub">PnL Sesión: +$0.00</div>
     </div>
@@ -137,7 +134,6 @@
     </div>
   </div>
 
-  <!-- Panel Operativo -->
   <div class="trading-grid">
     <div class="box-card">
       <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -175,9 +171,10 @@
       </div>
       <button id="btnToggleBot" class="btn btn-green" onclick="toggleBot()" disabled>▶ Iniciar Bot Automático</button>
     </div>
+
     <div class="box-card">
       <h3 style="font-size: 0.9rem; color:#fff;">Operación Manual de Prueba</h3>
-      <p style="font-size: 0.72rem; color: var(--text-muted);">Ejecución de contrato a 1 tick contra el socket autenticado.</p>
+      <p style="font-size: 0.72rem; color: var(--text-muted);">Ejecuta un contrato a 1 tick (Rise/Fall) vía proposal → buy.</p>
       <div style="display: flex; gap: 10px; margin-top: auto;">
         <button id="btnManualCall" class="btn btn-green" style="flex:1; padding: 14px;" onclick="ejecutarManual('CALL')" disabled>▲ CALL (Rise 1t)</button>
         <button id="btnManualPut" class="btn btn-red" style="flex:1; padding: 14px;" onclick="ejecutarManual('PUT')" disabled>▼ PUT (Fall 1t)</button>
@@ -185,7 +182,6 @@
     </div>
   </div>
 
-  <!-- Historial de Operaciones -->
   <div class="box-card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
       <h3 style="font-size: 0.9rem; color:#fff;">Diario de Operaciones</h3>
@@ -203,40 +199,26 @@
     </div>
   </div>
 
-  <div id="console">> Selecciona tu cuenta y haz clic en "Conectar e Iniciar"...</div>
+  <div id="console">> Selecciona tu cuenta y haz clic en "Conectar"...</div>
 
 </div>
 
 <script>
-// ==========================================
-// CONFIGURACIÓN CORREGIDA SEGÚN DOCUMENTACIÓN
-// ==========================================
+// ==========================================================
+// CONFIGURACIÓN
+// ==========================================================
 const API_BASE = 'https://api.derivws.com';
-const ENDPOINT_ACCOUNTS = `${API_BASE}/trading/v1/options/accounts`;
 const ENDPOINT_OTP = `${API_BASE}/trading/v1/options/accounts/{accountId}/otp`;
 const MULT_MARTINGALE = 2.14;
 
 const state = {
-  token: '',
-  appId: '',
-  accountId: '',
-  accountType: 'demo',
-  ws: null,
-  isConnected: false,
-  botRunning: false,
-  symbol: '1HZ75V',
-  balance: 0,
-  currency: 'USD',
-  prices: [],
-  epochs: [],
-  returns: [],
-  level: 1,
-  currentStake: 0.35,
-  wins: 0,
-  losses: 0,
-  netPnL: 0,
-  lastTradeEpoch: 0,
-  inTrade: false
+  token: '', appId: '', accountId: '', accountType: 'demo',
+  ws: null, isConnected: false, botRunning: false,
+  symbol: '1HZ75V', balance: 0, currency: 'USD',
+  prices: [], epochs: [], returns: [],
+  level: 1, currentStake: 0.35, wins: 0, losses: 0, netPnL: 0,
+  lastTradeEpoch: 0, inTrade: false,
+  pendingContractId: null
 };
 
 function log(msg, color = '#38bdf8') {
@@ -251,9 +233,9 @@ function setDot(cls, txt) {
   document.getElementById('wsStatus').innerText = txt;
 }
 
-// ==========================================
-// FLUJO CORREGIDO DE CONEXIÓN
-// ==========================================
+// ==========================================================
+// FLUJO DE CONEXIÓN (REST OTP → WebSocket)
+// ==========================================================
 async function conectarCuentaOptions() {
   state.token = document.getElementById('cfgToken').value.trim();
   state.appId = document.getElementById('cfgAppId').value.trim();
@@ -269,13 +251,12 @@ async function conectarCuentaOptions() {
   log(`Solicitando OTP para ${state.accountId} (${state.accountType.toUpperCase()})...`, '#f0883e');
 
   try {
-    // PASO 1: Solicitar OTP al endpoint REST correcto
     const otpUrl = ENDPOINT_OTP.replace('{accountId}', state.accountId);
     const res = await fetch(otpUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${state.token}`,
-        'Deriv-App-ID': state.appId,  // ✅ CRÍTICO: requerido para PAT
+        'Deriv-App-ID': state.appId,
         'Content-Type': 'application/json'
       }
     });
@@ -289,17 +270,14 @@ async function conectarCuentaOptions() {
       return;
     }
 
-    // PASO 2: Extraer la URL del WebSocket de la respuesta (data.url)
     const wsUrl = data.data?.url || data.url;
     if (!wsUrl) {
-      log('❌ La respuesta no contiene una URL de WebSocket válida.', '#f87171');
+      log('❌ La respuesta no contiene URL de WebSocket.', '#f87171');
       setDot('err', 'URL no encontrada');
       return;
     }
 
-    log(`✔ OTP obtenido. URL: ${wsUrl.substring(0, 60)}...`, '#2ea043');
-
-    // PASO 3: Conectar al WebSocket usando la URL exacta devuelta por el servidor
+    log(`✔ OTP obtenido. Conectando WS...`, '#2ea043');
     abrirWebSocketOptions(wsUrl);
 
   } catch (e) {
@@ -309,9 +287,8 @@ async function conectarCuentaOptions() {
 }
 
 function abrirWebSocketOptions(url) {
-  try {
-    state.ws = new WebSocket(url);
-  } catch (err) {
+  try { state.ws = new WebSocket(url); }
+  catch (err) {
     log(`Error al instanciar socket: ${err.message}`, '#f87171');
     setDot('err', 'Fallo conexión');
     return;
@@ -328,24 +305,18 @@ function abrirWebSocketOptions(url) {
     document.getElementById('btnManualPut').disabled = false;
     document.getElementById('btnToggleBot').disabled = false;
 
-    log(`✔ Conexión WebSocket establecida en cuenta ${state.accountId}.`, '#2ea043');
-
-    // Suscribir al balance y a los ticks
+    log(`✔ WebSocket establecido en cuenta ${state.accountId}.`, '#2ea043');
     solicitarBalance();
     solicitarTicks();
   };
 
   state.ws.onmessage = (evt) => {
-    try {
-      const data = JSON.parse(evt.data);
-      handleMessage(data);
-    } catch (e) {
-      console.error('Error parseando mensaje:', e);
-    }
+    try { handleMessage(JSON.parse(evt.data)); }
+    catch (e) { console.error('Error parseando mensaje:', e); }
   };
 
   state.ws.onerror = () => {
-    log('Fallo de red en el canal WebSocket.', '#f87171');
+    log('Fallo de red en el WebSocket.', '#f87171');
     setDot('err', 'Error');
   };
 
@@ -361,55 +332,6 @@ function solicitarBalance() {
   }
 }
 
-function handleMessage(data) {
-  if (data.error) {
-    log(`[DERIV API ERROR]: ${data.error.message}`, '#f87171');
-    if (state.inTrade) state.inTrade = false;
-    return;
-  }
-
-  // Balance
-  if (data.msg_type === 'balance' && data.balance) {
-    state.balance = parseFloat(data.balance.balance);
-    state.currency = data.balance.currency || 'USD';
-    document.getElementById('kpiBalance').innerText = `$${state.balance.toFixed(2)}`;
-    log(`Balance actualizado: $${state.balance.toFixed(2)} ${state.currency}`, '#38bdf8');
-  }
-
-  // Historial de ticks
-  if (data.msg_type === 'history' && data.history) {
-    const times = data.history.times;
-    const prices = data.history.prices;
-    for (let i = 0; i < times.length; i++) {
-      calcularTick(parseFloat(prices[i]), parseInt(times[i], 10), false);
-    }
-    log(`Buffer calibrado con ${times.length} ticks. Bot listo.`, '#2ea043');
-  }
-
-  // Tick en streaming
-  if (data.msg_type === 'tick' && data.tick) {
-    calcularTick(parseFloat(data.tick.quote), parseInt(data.tick.epoch, 10), true);
-  }
-
-  // Apertura de orden
-  if (data.msg_type === 'buy' && data.buy) {
-    log(`🚀 ORDEN CONFIRMADA: Contrato #${data.buy.contract_id} por $${parseFloat(data.buy.buy_price).toFixed(2)}`, '#38bdf8');
-    state.ws.send(JSON.stringify({
-      proposal_open_contract: 1,
-      contract_id: data.buy.contract_id,
-      subscribe: 1
-    }));
-  }
-
-  // Liquidación del contrato
-  if (data.msg_type === 'proposal_open_contract' && data.proposal_open_contract) {
-    const poc = data.proposal_open_contract;
-    if (poc.is_sold === 1) {
-      liquidarContrato(poc);
-    }
-  }
-}
-
 function solicitarTicks() {
   log(`Suscribiendo streaming de ${state.symbol}...`, '#38bdf8');
   state.ws.send(JSON.stringify({
@@ -422,9 +344,81 @@ function solicitarTicks() {
   }));
 }
 
-// ==========================================
-// LÓGICA DE TRADING (sin cambios)
-// ==========================================
+// ==========================================================
+// MANEJADOR DE MENSAJES
+// ==========================================================
+function handleMessage(data) {
+  if (data.error) {
+    log(`[DERIV API ERROR]: ${data.error.message}`, '#f87171');
+    if (state.inTrade) state.inTrade = false;
+    return;
+  }
+
+  // Balance
+  if (data.msg_type === 'balance' && data.balance) {
+    state.balance = parseFloat(data.balance.balance);
+    state.currency = data.balance.currency || 'USD';
+    document.getElementById('kpiBalance').innerText = `$${state.balance.toFixed(2)}`;
+  }
+
+  // Historial inicial
+  if (data.msg_type === 'history' && data.history) {
+    const times = data.history.times;
+    const prices = data.history.prices;
+    for (let i = 0; i < times.length; i++) {
+      calcularTick(parseFloat(prices[i]), parseInt(times[i], 10), false);
+    }
+    log(`Buffer calibrado con ${times.length} ticks. Bot listo.`, '#2ea043');
+  }
+
+  // Tick en vivo
+  if (data.msg_type === 'tick' && data.tick) {
+    calcularTick(parseFloat(data.tick.quote), parseInt(data.tick.epoch, 10), true);
+  }
+
+  // ✅ PASO 1: Respuesta de PROPOSAL → enviar BUY
+  if (data.msg_type === 'proposal' && data.proposal) {
+    const proposalId = data.proposal.id;
+    const askPrice = data.proposal.ask_price;
+
+    if (!proposalId || !askPrice) {
+      log('❌ Propuesta sin id o ask_price. Abortando compra.', '#f87171');
+      state.inTrade = false;
+      return;
+    }
+
+    log(`✔ Propuesta recibida (ask: $${askPrice}). Enviando BUY...`, '#38bdf8');
+    state.ws.send(JSON.stringify({
+      buy: proposalId,
+      price: askPrice
+    }));
+  }
+
+  // ✅ PASO 2: Confirmación de BUY → suscribirse al contrato
+  if (data.msg_type === 'buy' && data.buy) {
+    const contractId = data.buy.contract_id;
+    state.pendingContractId = contractId;
+    log(`🚀 ORDEN CONFIRMADA: Contrato #${contractId} por $${parseFloat(data.buy.buy_price).toFixed(2)}`, '#38bdf8');
+
+    state.ws.send(JSON.stringify({
+      proposal_open_contract: 1,
+      contract_id: contractId,
+      subscribe: 1
+    }));
+  }
+
+  // ✅ PASO 3: Seguimiento del contrato hasta que se venda
+  if (data.msg_type === 'proposal_open_contract' && data.proposal_open_contract) {
+    const poc = data.proposal_open_contract;
+    if (poc.is_sold === 1) {
+      liquidarContrato(poc);
+    }
+  }
+}
+
+// ==========================================================
+// MOTOR Z-SCORE
+// ==========================================================
 function calcularTick(price, epoch, permitirDisparo) {
   state.prices.push(price);
   state.epochs.push(epoch);
@@ -449,7 +443,7 @@ function calcularTick(price, epoch, permitirDisparo) {
     let varSum = 0;
     for (let i = 0; i < n; i++) varSum += Math.pow(state.returns[i] - mean, 2);
     const std = Math.sqrt(varSum / (n - 1));
-    let z = std > 1e-12 ? (ret - mean) / std : 0;
+    const z = std > 1e-12 ? (ret - mean) / std : 0;
 
     document.getElementById('kpiZScore').innerText = `${z >= 0 ? '+' : ''}${z.toFixed(2)}σ`;
     const clamped = Math.max(-4, Math.min(4, z));
@@ -470,7 +464,7 @@ function evaluarGatillo(z, epoch) {
   const tp = parseFloat(document.getElementById('cfgTP').value) || 5.0;
   const sl = parseFloat(document.getElementById('cfgSL').value) || 5.0;
   if (state.netPnL >= tp || state.netPnL <= -sl) {
-    log('Take Profit o Stop Loss de sesión alcanzado. Bot en pausa.', '#f0883e');
+    log('TP/SL de sesión alcanzado. Bot en pausa.', '#f0883e');
     toggleBot();
     return;
   }
@@ -478,53 +472,65 @@ function evaluarGatillo(z, epoch) {
   state.inTrade = true;
   state.lastTradeEpoch = epoch;
   const direction = isCall ? 'CALL' : 'PUT';
-  log(`⚡ DISPARO: Z = ${z.toFixed(2)}σ -> ${direction} ($${state.currentStake.toFixed(2)})...`, '#f0883e');
+  log(`⚡ DISPARO: Z = ${z.toFixed(2)}σ → ${direction} ($${state.currentStake.toFixed(2)})`, '#f0883e');
   enviarOrden(direction, state.currentStake);
 }
 
 function ejecutarManual(direction) {
-  if (!state.isConnected) { alert('Conecta primero tu cuenta para operar.'); return; }
+  if (!state.isConnected) { alert('Conecta primero tu cuenta.'); return; }
+  if (state.inTrade) { log('Ya hay una operación en curso.', '#f0883e'); return; }
+
+  state.inTrade = true;
   const stake = parseFloat(document.getElementById('cfgBaseStake').value) || 0.35;
   log(`Enviando orden manual ${direction} por $${stake.toFixed(2)}...`, '#38bdf8');
   enviarOrden(direction, stake);
 }
 
+// ==========================================================
+// FLUJO PROPOSAL → BUY
+// ==========================================================
 function enviarOrden(direction, amount) {
-  const req = {
-    buy: 1,
-    price: amount,
-    parameters: {
-      amount: amount,
-      basis: 'stake',
-      contract_type: direction,
-      currency: state.currency,
-      duration: 1,
-      duration_unit: 't',
-      symbol: state.symbol
-    }
+  // El campo correcto es 'underlying_symbol' (no 'symbol')
+  // y se solicita una PROPOSAL, no un BUY directo.
+  const request = {
+    proposal: 1,
+    amount: amount,
+    basis: 'stake',
+    contract_type: direction,
+    currency: state.currency,
+    duration: 1,
+    duration_unit: 't',
+    underlying_symbol: state.symbol
   };
-  state.ws.send(JSON.stringify(req));
+
+  log(`→ Solicitando propuesta: ${direction} $${amount.toFixed(2)} @ ${state.symbol}`, '#38bdf8');
+  state.ws.send(JSON.stringify(request));
 }
 
+// ==========================================================
+// LIQUIDACIÓN Y MÉTRICAS
+// ==========================================================
 function liquidarContrato(poc) {
   state.inTrade = false;
+  state.pendingContractId = null;
+
   const profit = parseFloat(poc.profit);
   const isWin = profit > 0;
 
   if (isWin) {
     state.wins++;
-    log(`✅ GANADA: #${poc.contract_id} | Beneficio: +$${profit.toFixed(2)}`, '#2ea043');
+    log(`✅ GANADA: #${poc.contract_id} | +$${profit.toFixed(2)}`, '#2ea043');
     state.level = 1;
     state.currentStake = parseFloat(document.getElementById('cfgBaseStake').value) || 0.35;
   } else {
     state.losses++;
-    log(`❌ PERDIDA: #${poc.contract_id} | Pérdida: -$${Math.abs(profit).toFixed(2)}`, '#f87171');
+    log(`❌ PERDIDA: #${poc.contract_id} | -$${Math.abs(profit).toFixed(2)}`, '#f87171');
     if (state.level < 3) {
       state.level++;
       state.currentStake = parseFloat((state.currentStake * MULT_MARTINGALE).toFixed(2));
-      log(`[MARTINGALA] Siguiente nivel: L${state.level} ($${state.currentStake.toFixed(2)})`, '#f0883e');
+      log(`[MARTINGALA] Nivel ${state.level} → $${state.currentStake.toFixed(2)}`, '#f0883e');
     } else {
-      log('[MARTINGALA] Cap L3 alcanzado. Reiniciando a Nivel 1.', '#f87171');
+      log('[MARTINGALA] Cap L3 alcanzado. Reset a Nivel 1.', '#f87171');
       state.level = 1;
       state.currentStake = parseFloat(document.getElementById('cfgBaseStake').value) || 0.35;
     }
@@ -577,7 +583,7 @@ function toggleBot() {
   } else {
     btn.innerText = '▶ Iniciar Bot Automático';
     btn.className = 'btn btn-green';
-    log('⏸ BOT PAUSADO por el usuario.', '#f0883e');
+    log('⏸ BOT PAUSADO.', '#f0883e');
   }
 }
 
@@ -592,6 +598,7 @@ function desconectar() {
   if (state.ws) { try { state.ws.close(); } catch(e){} state.ws = null; }
   state.isConnected = false;
   state.botRunning = false;
+  state.inTrade = false;
   document.getElementById('btnConnect').style.display = 'inline-block';
   document.getElementById('btnDisconnect').style.display = 'none';
   document.getElementById('btnManualCall').disabled = true;
