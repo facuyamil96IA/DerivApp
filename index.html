@@ -573,4 +573,33 @@ function toggleBot() {
   if (state.botRunning) {
     btn.innerText = '⏸ Pausar Bot Automático';
     btn.className = 'btn btn-red';
-    log('▶ BOT ACTIVADO: Monitoreando microestructura...', '#2ea
+    log('▶ BOT ACTIVADO: Monitoreando microestructura...', '#2ea043');
+  } else {
+    btn.innerText = '▶ Iniciar Bot Automático';
+    btn.className = 'btn btn-green';
+    log('⏸ BOT PAUSADO por el usuario.', '#f0883e');
+  }
+}
+
+function cambiarActivo() {
+  state.symbol = document.getElementById('cfgSymbol').value;
+  document.getElementById('badgeAsset').innerText = state.symbol;
+  state.prices = []; state.epochs = []; state.returns = [];
+  if (state.isConnected && state.ws) solicitarTicks();
+}
+
+function desconectar() {
+  if (state.ws) { try { state.ws.close(); } catch(e){} state.ws = null; }
+  state.isConnected = false;
+  state.botRunning = false;
+  document.getElementById('btnConnect').style.display = 'inline-block';
+  document.getElementById('btnDisconnect').style.display = 'none';
+  document.getElementById('btnManualCall').disabled = true;
+  document.getElementById('btnManualPut').disabled = true;
+  document.getElementById('btnToggleBot').disabled = true;
+  document.getElementById('lblActiveAccount').innerText = 'Ninguna';
+  setDot('', 'Desconectado');
+}
+</script>
+</body>
+</html>
