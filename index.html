@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Deriv Trading Suite - Options API v1</title>
+  <title>Deriv Quant Trading Suite - WebSocket v3</title>
   <style>
     :root {
       --bg: #090d16;
@@ -66,7 +66,6 @@
     .dot.err { background: var(--red); }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-    /* Auth Panel */
     .auth-card {
       background: var(--card);
       border: 1px solid var(--border);
@@ -78,9 +77,12 @@
     }
     .auth-row {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: 140px 1fr auto;
       gap: 10px;
+      align-items: flex-end;
     }
+    @media (max-width: 768px) { .auth-row { grid-template-columns: 1fr; } }
+
     label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px; }
     input, select {
       width: 100%;
@@ -103,12 +105,12 @@
       cursor: pointer;
       transition: background 0.2s;
     }
-    .btn:hover { background: var(--primary-hover); }
+    .btn:hover:not(:disabled) { background: var(--primary-hover); }
     .btn:disabled { background: #475569; cursor: not-allowed; }
     .btn-green { background: var(--green); }
-    .btn-green:hover { background: #268036; }
+    .btn-green:hover:not(:disabled) { background: #268036; }
     .btn-red { background: var(--red); }
-    .btn-red:hover { background: #d33c33; }
+    .btn-red:hover:not(:disabled) { background: #d33c33; }
 
     /* KPIs */
     .kpi-grid {
@@ -170,7 +172,7 @@
       transition: left 0.15s ease-out;
     }
 
-    /* Table */
+    /* Tabla */
     .table-scroll { max-height: 220px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; }
     table { width: 100%; border-collapse: collapse; font-size: 0.76rem; font-family: monospace; text-align: left; }
     th { background: var(--card-alt); padding: 7px 10px; color: var(--text-muted); border-bottom: 1px solid var(--border); position: sticky; top: 0; }
@@ -179,7 +181,7 @@
     .pill-win { background: rgba(46, 160, 67, 0.2); color: var(--green); border: 1px solid var(--green); }
     .pill-loss { background: rgba(248, 81, 73, 0.2); color: var(--red); border: 1px solid var(--red); }
 
-    /* Console */
+    /* Consola */
     #console {
       background: #020617;
       border: 1px solid var(--border);
@@ -202,8 +204,8 @@
     <div style="display: flex; align-items: center; gap: 10px;">
       <span class="badge-sym" id="badgeAsset">1HZ75V</span>
       <div>
-        <h2 style="font-size: 1.05rem; color:#fff;">Deriv Trading Platform (Options API v1)</h2>
-        <p style="font-size: 0.72rem; color: var(--text-muted);">Autenticación REST OTP + WebSocket Seguro para Cuentas Demo y Real</p>
+        <h2 style="font-size: 1.05rem; color:#fff;">Deriv Trading Platform (Direct Gateway)</h2>
+        <p style="font-size: 0.72rem; color: var(--text-muted);">Enlace directo con Servidor Red · Reconocimiento automático de Cuenta</p>
       </div>
     </div>
     <div style="display: flex; gap: 8px; align-items: center;">
@@ -217,35 +219,19 @@
     </div>
   </header>
 
-  <!-- Credenciales y Enlace de Cuentas -->
+  <!-- Credenciales y Conexión Directa -->
   <div class="auth-card">
     <div class="auth-row">
       <div>
-        <label>App ID Registrado</label>
-        <input type="text" id="cfgAppId" value="34sXT58c5CvohLOUewrMU">
-      </div>
-      <div style="grid-column: span 2;">
-        <label>Token Personal (PAT)</label>
-        <input type="password" id="cfgPatToken" value="pat_cf363ab19a46e65088da18ac183dc690a4acc7b950790d54dcc932aafccf493d">
-      </div>
-      <div style="display: flex; align-items: flex-end; gap: 8px;">
-        <button id="btnFetchAccounts" class="btn" onclick="consultarCuentasREST()">1. Obtener Cuentas</button>
-        <button class="btn" style="background:#334155;" onclick="conectarPublico()">Modo Público (Sin Token)</button>
-      </div>
-    </div>
-
-    <!-- Selector de Cuentas descubiertas -->
-    <div class="auth-row" id="rowAccountSelector" style="display: none; border-top: 1px solid var(--border); padding-top: 10px;">
-      <div>
-        <label>Cuentas Encontradas (GET /accounts)</label>
-        <select id="selAccounts" onchange="seleccionarCuenta()"></select>
+        <label>App ID</label>
+        <input type="text" id="cfgAppId" value="1089">
       </div>
       <div>
-        <label>Tipo de Entorno</label>
-        <input type="text" id="txtAccountType" readonly style="opacity: 0.8;">
+        <label>Token Personal (PAT o Token de API)</label>
+        <input type="password" id="cfgToken" value="pat_cf363ab19a46e65088da18ac183dc690a4acc7b950790d54dcc932aafccf493d">
       </div>
-      <div style="display: flex; align-items: flex-end; gap: 8px;">
-        <button id="btnConnectWS" class="btn btn-green" onclick="conectarWebSocketSeguro()">2. Conectar WebSocket</button>
+      <div style="display: flex; gap: 8px;">
+        <button id="btnConnect" class="btn btn-green" onclick="conectarWebSocketDirecto()">Conectar y Autenticar</button>
         <button id="btnDisconnect" class="btn btn-red" onclick="desconectar()" style="display: none;">Desconectar</button>
       </div>
     </div>
@@ -254,7 +240,7 @@
   <!-- KPIs -->
   <div class="kpi-grid">
     <div class="kpi-card">
-      <div class="kpi-lbl">Balance</div>
+      <div class="kpi-lbl">Balance de Cuenta</div>
       <div id="kpiBalance" class="kpi-val">$0.00</div>
       <div id="kpiPnL" class="kpi-sub">PnL Sesión: +$0.00</div>
     </div>
@@ -286,11 +272,11 @@
     <!-- Configuración del Bot y Gauge -->
     <div class="box-card">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="font-size: 0.9rem; color:#fff;">Motor Estadístico Z-Score & Cooldown</h3>
+        <h3 style="font-size: 0.9rem; color:#fff;">Motor Estadístico Z-Score</h3>
         <span style="font-size: 0.72rem; color: var(--text-muted);">Umbral: |Z| ≥ 3.2σ</span>
       </div>
 
-      <!-- Barra de Gauge -->
+      <!-- Gauge visual -->
       <div class="gauge-track">
         <div class="gauge-zone-put"></div>
         <div class="gauge-center"></div>
@@ -298,7 +284,7 @@
         <div id="gaugeCursor" class="gauge-cursor" style="left: 50%;"></div>
       </div>
 
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
         <div>
           <label>Activo</label>
           <select id="cfgSymbol" onchange="cambiarActivo()">
@@ -327,9 +313,9 @@
       </button>
     </div>
 
-    <!-- Ejecución Manual de Pruebas -->
+    <!-- Ejecución Manual -->
     <div class="box-card">
-      <h3 style="font-size: 0.9rem; color:#fff;">Operación Manual (Prueba Rápida)</h3>
+      <h3 style="font-size: 0.9rem; color:#fff;">Operación Manual de Prueba</h3>
       <p style="font-size: 0.72rem; color: var(--text-muted);">Envía orden inmediata a 1 tick al WebSocket autenticado.</p>
       
       <div style="display: flex; gap: 10px; margin-top: auto;">
@@ -344,7 +330,7 @@
 
   </div>
 
-  <!-- Tabla de Operaciones -->
+  <!-- Diario de Operaciones -->
   <div class="box-card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
       <h3 style="font-size: 0.9rem; color:#fff;">Diario de Contratos en Tiempo Real</h3>
@@ -371,24 +357,19 @@
     </div>
   </div>
 
-  <!-- Terminal de Diagnóstico -->
-  <div id="console">> Suite lista. Haz clic en "1. Obtener Cuentas" para consultar tu Demo y Real vía REST...</div>
+  <!-- Terminal -->
+  <div id="console">> Conecta el WebSocket para autenticar y cargar tu cuenta...</div>
 
 </div>
 
 <script>
-const REST_API_BASE = 'https://api.derivws.com/trading/v1/options';
+const WS_ENDPOINT = 'wss://red.derivws.com/websockets/v3';
 const MULT_MARTINGALE = 2.14;
 
 const state = {
-  appId: '34sXT58c5CvohLOUewrMU',
-  patToken: '',
-  accounts: [],
-  selectedAccount: null,
-  
   ws: null,
   isConnected: false,
-  isPublicMode: false,
+  isAuthorized: false,
   botRunning: false,
   
   symbol: '1HZ75V',
@@ -419,162 +400,33 @@ function setDot(cls, txt) {
   document.getElementById('wsStatus').innerText = txt;
 }
 
-// 1. Paso 1: Consultar Cuentas vía REST (GET /accounts)
-async function consultarCuentasREST() {
-  state.appId = document.getElementById('cfgAppId').value.trim();
-  state.patToken = document.getElementById('cfgPatToken').value.trim();
+function conectarWebSocketDirecto() {
+  const appId = document.getElementById('cfgAppId').value.trim() || '1089';
+  const token = document.getElementById('cfgToken').value.trim();
 
-  if (!state.appId || !state.patToken) {
-    alert('Por favor introduce tu App ID y tu token PAT.');
+  if (!token) {
+    alert('Introduce un token de API.');
     return;
   }
 
-  log('Consultando cuentas asociadas vía GET /trading/v1/options/accounts...', '#f0883e');
-  setDot('busy', 'Consultando REST...');
-
-  try {
-    const res = await fetch(`${REST_API_BASE}/accounts`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${state.patToken}`,
-        'Deriv-App-ID': state.appId,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(`HTTP ${res.status}: ${errData.error?.message || errData.message || res.statusText}`);
-    }
-
-    const data = await res.json();
-    state.accounts = data.accounts || [];
-
-    if (!state.accounts.length) {
-      log('No se encontraron cuentas activas de Options en este usuario.', '#f87171');
-      setDot('err', 'Sin cuentas');
-      return;
-    }
-
-    const sel = document.getElementById('selAccounts');
-    sel.innerHTML = '';
-    state.accounts.forEach((acc, idx) => {
-      const opt = document.createElement('option');
-      opt.value = acc.id || acc.account_id;
-      const isDemo = acc.is_virtual || (acc.id && acc.id.startsWith('VRTC')) || acc.type === 'demo';
-      opt.innerText = `${acc.id || acc.account_id} - [${isDemo ? 'DEMO' : 'REAL'}] Balance: ${acc.balance || 0} ${acc.currency || 'USD'}`;
-      sel.appendChild(opt);
-    });
-
-    document.getElementById('rowAccountSelector').style.display = 'grid';
-    seleccionarCuenta();
-    setDot('', 'Cuentas Cargadas');
-    log(`✔ Se cargaron ${state.accounts.length} cuenta(s) con éxito. Selecciona una y presiona "Conectar WebSocket".`, '#2ea043');
-
-  } catch (err) {
-    log(`Error al consultar cuentas: ${err.message}`, '#f87171');
-    setDot('err', 'Error REST');
-  }
-}
-
-function seleccionarCuenta() {
-  const selVal = document.getElementById('selAccounts').value;
-  state.selectedAccount = state.accounts.find(a => (a.id || a.account_id) === selVal);
-  if (!state.selectedAccount) return;
-
-  const isDemo = state.selectedAccount.is_virtual || 
-                (state.selectedAccount.id && state.selectedAccount.id.startsWith('VRTC')) || 
-                state.selectedAccount.type === 'demo';
-
-  const typeEl = document.getElementById('txtAccountType');
-  typeEl.value = isDemo ? 'CUENTA DEMO (Segura)' : 'CUENTA REAL (Atención)';
-  typeEl.style.color = isDemo ? 'var(--cyan)' : 'var(--red)';
-}
-
-// 2. Paso 2: Generar OTP y enlazar WebSocket
-async function conectarWebSocketSeguro() {
-  if (!state.selectedAccount) return;
-
-  const accId = state.selectedAccount.id || state.selectedAccount.account_id;
-  const isDemo = state.selectedAccount.is_virtual || accId.startsWith('VRTC') || state.selectedAccount.type === 'demo';
-
-  log(`Solicitando OTP seguro para cuenta ${accId}...`, '#f0883e');
-  setDot('busy', 'Obteniendo OTP...');
-
-  try {
-    const res = await fetch(`${REST_API_BASE}/accounts/${accId}/otp`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${state.patToken}`,
-        'Deriv-App-ID': state.appId,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(`HTTP ${res.status}: ${errData.error?.message || errData.message || res.statusText}`);
-    }
-
-    const data = await res.json();
-    const otp = data.otp || data.token;
-    if (!otp) throw new Error('Deriv no devolvió el parámetro OTP en la respuesta.');
-
-    const wsUrl = `wss://api.derivws.com/trading/v1/options/ws/${isDemo ? 'demo' : 'real'}?otp=${otp}`;
-    log(`Enlace WebSocket generado. Conectando a ${isDemo ? 'DEMO' : 'REAL'}...`, '#38bdf8');
-    iniciarWebSocket(wsUrl, false, accId);
-
-  } catch (err) {
-    log(`Error al generar OTP: ${err.message}`, '#f87171');
-    setDot('err', 'Error OTP');
-  }
-}
-
-// Canal Público sin credenciales
-function conectarPublico() {
   desconectar();
-  const wsUrl = 'wss://api.derivws.com/trading/v1/options/ws/public';
-  log('Conectando a canal público (solo visualización y ticks)...', '#38bdf8');
-  iniciarWebSocket(wsUrl, true, 'Público / Simulación');
-}
-
-function iniciarWebSocket(url, isPublic, label) {
-  desconectar();
-  state.isPublicMode = isPublic;
-  setDot('busy', 'Conectando WS...');
+  setDot('busy', 'Conectando...');
+  const fullUrl = `${WS_ENDPOINT}?app_id=${appId}`;
+  log(`Abriendo conexión con ${fullUrl}...`, '#f0883e');
 
   try {
-    state.ws = new WebSocket(url);
-  } catch (e) {
-    log(`Error abriendo WebSocket: ${e.message}`, '#f87171');
+    state.ws = new WebSocket(fullUrl);
+  } catch (err) {
+    log(`Error al abrir WebSocket: ${err.message}`, '#f87171');
     setDot('err', 'Fallo conexión');
     return;
   }
 
   state.ws.onopen = () => {
     state.isConnected = true;
-    setDot('live', 'WS Conectado');
-    document.getElementById('lblActiveAccount').innerText = label;
-    document.getElementById('btnConnectWS').style.display = 'none';
-    document.getElementById('btnDisconnect').style.display = 'inline-block';
-    
-    if (!isPublic) {
-      document.getElementById('btnManualCall').disabled = false;
-      document.getElementById('btnManualPut').disabled = false;
-      document.getElementById('btnToggleBot').disabled = false;
-    }
-
-    log(`✔ WebSocket establecido con éxito. Suscribiendo ticks de ${state.symbol}...`, '#2ea043');
-
-    // Suscripción de ticks
-    state.ws.send(JSON.stringify({
-      ticks_history: state.symbol,
-      adjust_start_time: 1,
-      count: 65,
-      end: 'latest',
-      style: 'ticks',
-      subscribe: 1
-    }));
+    log('✔ Enlace establecido. Enviando handshake de autorización con token...', '#38bdf8');
+    setDot('busy', 'Autenticando...');
+    state.ws.send(JSON.stringify({ authorize: token }));
   };
 
   state.ws.onmessage = (evt) => {
@@ -587,17 +439,16 @@ function iniciarWebSocket(url, isPublic, label) {
   };
 
   state.ws.onerror = () => {
-    log('Error de comunicación en WebSocket.', '#f87171');
-    setDot('err', 'Error WS');
+    log('Error de red en WebSocket.', '#f87171');
+    setDot('err', 'Error');
   };
 
   state.ws.onclose = () => {
-    log('WebSocket cerrado.', '#f0883e');
+    log('Conexión cerrada por el servidor.', '#f0883e');
     desconectar();
   };
 }
 
-// 3. Procesamiento de Mensajes WebSocket
 function handleWSMessage(data) {
   if (data.error) {
     log(`[DERIV API ERROR]: ${data.error.message}`, '#f87171');
@@ -605,7 +456,43 @@ function handleWSMessage(data) {
     return;
   }
 
-  // Historial inicial
+  // 1. Respuesta de Autorización
+  if (data.msg_type === 'authorize' && data.authorize) {
+    const acc = data.authorize;
+    state.isAuthorized = true;
+    const isVirtual = acc.is_virtual === 1 || acc.loginid.startsWith('VRTC');
+    const accTypeStr = isVirtual ? 'DEMO' : 'REAL';
+    
+    document.getElementById('lblActiveAccount').innerText = `${acc.loginid} [${accTypeStr}]`;
+    document.getElementById('lblActiveAccount').style.color = isVirtual ? 'var(--cyan)' : 'var(--red)';
+    
+    state.currency = acc.currency || 'USD';
+    state.balance = parseFloat(acc.balance);
+    document.getElementById('kpiBalance').innerText = `$${state.balance.toFixed(2)}`;
+
+    setDot('live', `${accTypeStr} Conectada`);
+    document.getElementById('btnConnect').style.display = 'none';
+    document.getElementById('btnDisconnect').style.display = 'inline-block';
+    document.getElementById('btnManualCall').disabled = false;
+    document.getElementById('btnManualPut').disabled = false;
+    document.getElementById('btnToggleBot').disabled = false;
+
+    log(`✔ AUTORIZADO: Cuenta ${acc.loginid} (${accTypeStr}) | Saldo: $${state.balance.toFixed(2)} ${state.currency}`, '#2ea043');
+
+    // Suscribir balance continuo
+    state.ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
+
+    // Suscribir ticks del activo seleccionado
+    solicitarTicks();
+  }
+
+  // 2. Actualización de Balance en tiempo real
+  if (data.msg_type === 'balance' && data.balance) {
+    state.balance = parseFloat(data.balance.balance);
+    document.getElementById('kpiBalance').innerText = `$${state.balance.toFixed(2)}`;
+  }
+
+  // 3. Historial de Ticks inicial
   if (data.msg_type === 'history' && data.history) {
     const times = data.history.times;
     const prices = data.history.prices;
@@ -615,16 +502,14 @@ function handleWSMessage(data) {
     log(`Buffer inicial cargado con ${times.length} ticks.`, '#2ea043');
   }
 
-  // Streaming de Ticks
+  // 4. Tick en streaming
   if (data.msg_type === 'tick' && data.tick) {
     calcularTick(parseFloat(data.tick.quote), parseInt(data.tick.epoch, 10), true);
   }
 
-  // Confirmación de Compra
+  // 5. Confirmación de compra de contrato
   if (data.msg_type === 'buy' && data.buy) {
-    log(`🚀 ORDEN CONFIRMADA: Contrato #${data.buy.contract_id} por $${parseFloat(data.buy.buy_price).toFixed(2)}`, '#38bdf8');
-    
-    // Suscribirse a la liquidación
+    log(`🚀 CONTRATO ABIERTO: #${data.buy.contract_id} por $${parseFloat(data.buy.buy_price).toFixed(2)}`, '#38bdf8');
     state.ws.send(JSON.stringify({
       proposal_open_contract: 1,
       contract_id: data.buy.contract_id,
@@ -632,7 +517,7 @@ function handleWSMessage(data) {
     }));
   }
 
-  // Monitoreo y Liquidación del Contrato
+  // 6. Monitoreo y liquidación
   if (data.msg_type === 'proposal_open_contract' && data.proposal_open_contract) {
     const poc = data.proposal_open_contract;
     if (poc.is_sold === 1) {
@@ -641,7 +526,19 @@ function handleWSMessage(data) {
   }
 }
 
-// 4. Motor Z-Score
+function solicitarTicks() {
+  log(`Suscribiendo streaming para ${state.symbol}...`, '#38bdf8');
+  state.ws.send(JSON.stringify({
+    ticks_history: state.symbol,
+    adjust_start_time: 1,
+    count: 65,
+    end: 'latest',
+    style: 'ticks',
+    subscribe: 1
+  }));
+}
+
+// Motor Z-Score
 function calcularTick(price, epoch, permitirDisparo) {
   state.prices.push(price);
   state.epochs.push(epoch);
@@ -658,7 +555,6 @@ function calcularTick(price, epoch, permitirDisparo) {
   state.returns.push(ret);
   if (state.returns.length > 60) state.returns.shift();
 
-  // Actualizar UI
   document.getElementById('kpiPrice').innerText = price.toFixed(2);
   const deltaPct = ((price - prev) / prev) * 100;
   const elDelta = document.getElementById('kpiDelta');
@@ -678,7 +574,6 @@ function calcularTick(price, epoch, permitirDisparo) {
 
     document.getElementById('kpiZScore').innerText = `${z >= 0 ? '+' : ''}${z.toFixed(2)}σ`;
     
-    // Mover cursor del Gauge
     const clamped = Math.max(-4, Math.min(4, z));
     const pct = ((clamped + 4) / 8) * 100;
     document.getElementById('gaugeCursor').style.left = `${pct}%`;
@@ -690,18 +585,17 @@ function calcularTick(price, epoch, permitirDisparo) {
 }
 
 function evaluarGatillo(z, epoch) {
-  if (epoch - state.lastTradeEpoch < 3) return; // Cooldown asimétrico
+  if (epoch - state.lastTradeEpoch < 3) return;
 
-  const isPut = z >= 3.2;   // Expansión alcista extrema -> Vender (Fall)
-  const isCall = z <= -3.2; // Expansión bajista extrema -> Comprar (Rise)
+  const isPut = z >= 3.2;
+  const isCall = z <= -3.2;
 
   if (!isPut && !isCall) return;
 
-  // Verificación de TP y SL
   const tp = parseFloat(document.getElementById('cfgTP').value) || 5.0;
   const sl = parseFloat(document.getElementById('cfgSL').value) || 5.0;
   if (state.netPnL >= tp || state.netPnL <= -sl) {
-    log('Objetivo o Stop Loss de sesión alcanzado. Pausando bot.', '#f0883e');
+    log('Objetivo o Stop Loss de sesión alcanzado. Bot pausado.', '#f0883e');
     toggleBot();
     return;
   }
@@ -709,15 +603,14 @@ function evaluarGatillo(z, epoch) {
   state.inTrade = true;
   state.lastTradeEpoch = epoch;
   const direction = isCall ? 'CALL' : 'PUT';
-  log(`⚡ DISPARO AUTOMÁTICO: Z = ${z.toFixed(2)}σ -> Enviando ${direction} ($${state.currentStake.toFixed(2)})...`, '#f0883e');
+  log(`⚡ DISPARO AUTOMÁTICO: Z = ${z.toFixed(2)}σ -> ${direction} ($${state.currentStake.toFixed(2)})...`, '#f0883e');
 
   enviarOrden(direction, state.currentStake);
 }
 
-// 5. Envío de Órdenes (Manual y Automático)
 function ejecutarOrdenManual(direction) {
-  if (!state.isConnected || state.isPublicMode) {
-    alert('Conecta una cuenta Demo o Real para operar.');
+  if (!state.isConnected || !state.isAuthorized) {
+    alert('Conecta primero tu cuenta para operar.');
     return;
   }
   const stake = parseFloat(document.getElementById('cfgBaseStake').value) || 0.35;
@@ -742,7 +635,6 @@ function enviarOrden(direction, amount) {
   state.ws.send(JSON.stringify(req));
 }
 
-// 6. Liquidación de Contratos y Martingala L3
 function liquidarContrato(poc) {
   state.inTrade = false;
   const profit = parseFloat(poc.profit);
@@ -814,7 +706,7 @@ function toggleBot() {
   if (state.botRunning) {
     btn.innerText = '⏸ Pausar Bot Automático';
     btn.className = 'btn btn-red';
-    log('▶ BOT ACTIVADO: Escaneando microestructura...', '#2ea043');
+    log('▶ BOT ACTIVADO: Monitoreando microestructura en tiempo real...', '#2ea043');
   } else {
     btn.innerText = '▶ Iniciar Bot Automático';
     btn.className = 'btn btn-green';
@@ -829,15 +721,7 @@ function cambiarActivo() {
   state.epochs = [];
   state.returns = [];
   if (state.isConnected && state.ws) {
-    log(`Cambiando suscripción a ${state.symbol}...`);
-    state.ws.send(JSON.stringify({
-      ticks_history: state.symbol,
-      adjust_start_time: 1,
-      count: 65,
-      end: 'latest',
-      style: 'ticks',
-      subscribe: 1
-    }));
+    solicitarTicks();
   }
 }
 
@@ -847,8 +731,9 @@ function desconectar() {
     state.ws = null;
   }
   state.isConnected = false;
+  state.isAuthorized = false;
   state.botRunning = false;
-  document.getElementById('btnConnectWS').style.display = 'inline-block';
+  document.getElementById('btnConnect').style.display = 'inline-block';
   document.getElementById('btnDisconnect').style.display = 'none';
   document.getElementById('btnManualCall').disabled = true;
   document.getElementById('btnManualPut').disabled = true;
