@@ -3,17 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Deriv Options API v1 - Suite de Trading</title>
+  <title>Deriv Options API v1 - Suite Dual V75/V100</title>
   <style>
     :root {
       --bg: #090d16; --card: #151b23; --card-alt: #0d1117; --border: #30363d;
       --primary: #2563eb; --primary-hover: #1d4ed8; --green: #2ea043;
       --red: #f85149; --amber: #f0883e; --cyan: #38bdf8;
       --text: #f1f5f9; --text-muted: #94a3b8;
+      --v75: #38bdf8; --v100: #f59e0b;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; padding: 16px; min-height: 100vh; }
-    .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+    .container { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
     header { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
     .badge-sym { background: rgba(56, 189, 248, 0.15); color: var(--cyan); border: 1px solid rgba(56, 189, 248, 0.3); padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 0.85rem; }
     .status-pill { display: flex; align-items: center; gap: 8px; background: var(--card-alt); border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-family: monospace; }
@@ -34,7 +35,7 @@
     .btn-green:hover:not(:disabled) { background: #268036; }
     .btn-red { background: var(--red); }
     .btn-red:hover:not(:disabled) { background: #d33c33; }
-    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
     .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
     .kpi-lbl { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
     .kpi-val { font-size: 1.35rem; font-weight: 700; font-family: monospace; margin-top: 4px; }
@@ -43,6 +44,20 @@
     .trading-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
     @media (max-width: 900px) { .trading-grid { grid-template-columns: 1fr; } }
     .box-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+    .chart-container { position: relative; background: #020617; border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
+    canvas { display: block; width: 100%; height: 260px; }
+    .chart-legend { display: flex; gap: 16px; font-size: 0.72rem; font-family: monospace; margin-top: 6px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+    .dual-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 900px) { .dual-grid { grid-template-columns: 1fr; } }
+    .asset-panel { background: var(--card-alt); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+    .asset-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .asset-title { font-size: 0.82rem; font-weight: 700; }
+    .asset-price { font-family: monospace; font-size: 1rem; font-weight: 700; }
+    .zbar { position: relative; height: 8px; background: #020617; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); margin-top: 6px; }
+    .zbar-center { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: #64748b; }
+    .zbar-cursor { position: absolute; top: 0; bottom: 0; width: 4px; margin-left: -2px; background: #fff; border-radius: 1px; transition: left 0.1s linear; }
     .gauge-track { position: relative; height: 14px; background: #020617; border-radius: 7px; overflow: hidden; border: 1px solid var(--border); }
     .gauge-center { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: #64748b; }
     .gauge-zone-put { position: absolute; left: 0; width: 15%; top: 0; bottom: 0; background: rgba(248,81,73,0.35); }
@@ -64,10 +79,10 @@
 
   <header>
     <div style="display: flex; align-items: center; gap: 10px;">
-      <span class="badge-sym" id="badgeAsset">1HZ75V</span>
+      <span class="badge-sym">DUAL</span>
       <div>
-        <h2 style="font-size: 1.05rem; color:#fff;">Deriv Options API v1 (Tokens PAT)</h2>
-        <p style="font-size: 0.72rem; color: var(--text-muted);">Ejecución rápida vía proposal → buy</p>
+        <h2 style="font-size: 1.05rem; color:#fff;">Deriv Options API v1 — Estrategia Dual</h2>
+        <p style="font-size: 0.72rem; color: var(--text-muted);">V75 + V100 en simultáneo · Z-Score · Proposal → Buy</p>
       </div>
     </div>
     <div style="display: flex; gap: 8px; align-items: center;">
@@ -112,14 +127,9 @@
       <div id="kpiPnL" class="kpi-sub">PnL Sesión: +$0.00</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-lbl">Precio en Vivo</div>
-      <div id="kpiPrice" class="kpi-val txt-cyan">--</div>
-      <div id="kpiDelta" class="kpi-sub">Δ 0.00%</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-lbl">Z-Score (60 Ticks)</div>
+      <div class="kpi-lbl">Z-Score Activo</div>
       <div id="kpiZScore" class="kpi-val">0.00σ</div>
-      <div id="kpiTickCount" class="kpi-sub">Buffer: 0 / 60</div>
+      <div id="kpiZAsset" class="kpi-sub">—</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-lbl">Rendimiento</div>
@@ -132,34 +142,75 @@
       <div id="kpiNextStake" class="kpi-sub">Próximo Stake: $0.35</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-lbl">Latencia</div>
+      <div class="kpi-lbl">Latencia Última Orden</div>
       <div id="kpiLatency" class="kpi-val txt-green">-- ms</div>
-      <div id="kpiLatencyInfo" class="kpi-sub">Última orden</div>
+      <div id="kpiLatencyInfo" class="kpi-sub">Propuesta → Buy</div>
+    </div>
+  </div>
+
+  <!-- Gráfico dual -->
+  <div class="box-card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="font-size: 0.9rem; color:#fff;">Visor Gráfico en Tiempo Real</h3>
+      <span style="font-size: 0.72rem; color: var(--text-muted);">Normalizado a 0% base · últimos 120 ticks</span>
+    </div>
+    <div class="chart-container">
+      <canvas id="chart" width="1400" height="260"></canvas>
+    </div>
+    <div class="chart-legend">
+      <div class="legend-item"><div class="legend-dot" style="background: var(--v75);"></div><span>V75 (1HZ75V)</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background: var(--v100);"></div><span>V100 (1HZ100V)</span></div>
+      <div class="legend-item" style="margin-left: auto; color: var(--text-muted);">
+        <span id="lblChartInfo">Esperando datos...</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="dual-grid">
+    <div class="asset-panel" style="border-color: var(--v75);">
+      <div class="asset-header">
+        <div>
+          <div class="asset-title" style="color: var(--v75);">Serie A — V75</div>
+          <select id="cfgSymbolA" onchange="cambiarActivo('A')" style="margin-top:4px;">
+            <option value="1HZ75V" selected>Volatility 75 (1s)</option>
+            <option value="R_75">Volatility 75</option>
+          </select>
+        </div>
+        <div style="text-align: right;">
+          <div class="asset-price" id="priceA">--</div>
+          <div class="kpi-sub" id="deltaA">Δ 0.000%</div>
+        </div>
+      </div>
+      <div class="kpi-sub" id="zA" style="margin-top:4px;">Z: 0.00σ · Buffer: 0/60</div>
+      <div class="zbar"><div class="zbar-center"></div><div class="zbar-cursor" id="zbarA" style="left:50%;"></div></div>
+    </div>
+
+    <div class="asset-panel" style="border-color: var(--v100);">
+      <div class="asset-header">
+        <div>
+          <div class="asset-title" style="color: var(--v100);">Serie B — V100</div>
+          <select id="cfgSymbolB" onchange="cambiarActivo('B')" style="margin-top:4px;">
+            <option value="1HZ100V" selected>Volatility 100 (1s)</option>
+            <option value="R_100">Volatility 100</option>
+          </select>
+        </div>
+        <div style="text-align: right;">
+          <div class="asset-price" id="priceB">--</div>
+          <div class="kpi-sub" id="deltaB">Δ 0.000%</div>
+        </div>
+      </div>
+      <div class="kpi-sub" id="zB" style="margin-top:4px;">Z: 0.00σ · Buffer: 0/60</div>
+      <div class="zbar"><div class="zbar-center"></div><div class="zbar-cursor" id="zbarB" style="left:50%;"></div></div>
     </div>
   </div>
 
   <div class="trading-grid">
     <div class="box-card">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="font-size: 0.9rem; color:#fff;">Motor Estadístico Z-Score</h3>
+        <h3 style="font-size: 0.9rem; color:#fff;">Motor Estadístico Dual</h3>
         <span style="font-size: 0.72rem; color: var(--text-muted);">Umbral: |Z| ≥ 3.2σ</span>
       </div>
-      <div class="gauge-track">
-        <div class="gauge-zone-put"></div>
-        <div class="gauge-center"></div>
-        <div class="gauge-zone-call"></div>
-        <div id="gaugeCursor" class="gauge-cursor" style="left: 50%;"></div>
-      </div>
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
-        <div>
-          <label>Activo</label>
-          <select id="cfgSymbol" onchange="cambiarActivo()">
-            <option value="1HZ75V" selected>Volatility 75 (1s)</option>
-            <option value="1HZ100V">Volatility 100 (1s)</option>
-            <option value="R_75">Volatility 75</option>
-            <option value="R_100">Volatility 100</option>
-          </select>
-        </div>
         <div>
           <label>Stake Base ($)</label>
           <input type="number" id="cfgBaseStake" value="0.35" step="0.05" min="0.35">
@@ -172,16 +223,28 @@
           <label>Stop Loss ($)</label>
           <input type="number" id="cfgSL" value="5.00" step="0.5">
         </div>
+        <div>
+          <label>Modo</label>
+          <select id="cfgMode">
+            <option value="dual" selected>Dual (ambas series)</option>
+            <option value="A">Solo V75</option>
+            <option value="B">Solo V100</option>
+          </select>
+        </div>
       </div>
-      <button id="btnToggleBot" class="btn btn-green" onclick="toggleBot()" disabled>▶ Iniciar Bot Automático</button>
+      <button id="btnToggleBot" class="btn btn-green" onclick="toggleBot()" disabled>▶ Iniciar Bot Dual</button>
     </div>
 
     <div class="box-card">
-      <h3 style="font-size: 0.9rem; color:#fff;">Operación Manual de Prueba</h3>
-      <p style="font-size: 0.72rem; color: var(--text-muted);">Ejecuta un contrato a 1 tick (Rise/Fall) vía proposal → buy.</p>
+      <h3 style="font-size: 0.9rem; color:#fff;">Operación Manual</h3>
+      <p style="font-size: 0.72rem; color: var(--text-muted);">Ejecuta 1 tick con la serie seleccionada.</p>
+      <select id="cfgManualAsset">
+        <option value="A" selected>Serie A (V75)</option>
+        <option value="B">Serie B (V100)</option>
+      </select>
       <div style="display: flex; gap: 10px; margin-top: auto;">
-        <button id="btnManualCall" class="btn btn-green" style="flex:1; padding: 14px;" onclick="ejecutarManual('CALL')" disabled>▲ CALL (Rise 1t)</button>
-        <button id="btnManualPut" class="btn btn-red" style="flex:1; padding: 14px;" onclick="ejecutarManual('PUT')" disabled>▼ PUT (Fall 1t)</button>
+        <button id="btnManualCall" class="btn btn-green" style="flex:1; padding: 14px;" onclick="ejecutarManual('CALL')" disabled>▲ CALL</button>
+        <button id="btnManualPut" class="btn btn-red" style="flex:1; padding: 14px;" onclick="ejecutarManual('PUT')" disabled>▼ PUT</button>
       </div>
     </div>
   </div>
@@ -194,7 +257,7 @@
     <div class="table-scroll">
       <table>
         <thead>
-          <tr><th>ID Contrato</th><th>Hora</th><th>Tipo</th><th>Stake</th><th>Entrada</th><th>Salida</th><th>Resultado</th><th>Latencia</th><th>Estado</th></tr>
+          <tr><th>ID</th><th>Hora</th><th>Serie</th><th>Tipo</th><th>Stake</th><th>Z Entrada</th><th>Resultado</th><th>Latencia</th><th>Estado</th></tr>
         </thead>
         <tbody id="tblTradesBody">
           <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 14px;">Esperando conexión...</td></tr>
@@ -203,54 +266,63 @@
     </div>
   </div>
 
-  <div id="console">> Selecciona tu cuenta y haz clic en "Conectar"...</div>
+  <div id="console">> Conecta tu cuenta para iniciar el motor dual...</div>
 
 </div>
 
 <script>
 // ==========================================================
-// CONFIGURACIÓN
+// CONFIG
 // ==========================================================
 const API_BASE = 'https://api.derivws.com';
 const ENDPOINT_OTP = `${API_BASE}/trading/v1/options/accounts/{accountId}/otp`;
 const MULT_MARTINGALE = 2.14;
 const PING_INTERVAL = 25000;
+const WATCHDOG_INTERVAL = 3000;
+const WATCHDOG_TIMEOUT = 6000;
+const MAX_POINTS = 120;
 
+// ==========================================================
+// ESTADO
+// ==========================================================
 const state = {
   token: '', appId: '', accountId: '', accountType: 'demo',
   ws: null, isConnected: false, botRunning: false,
-  symbol: '1HZ75V', balance: 0, currency: 'USD',
-  prices: [], epochs: [], returns: [],
+  balance: 0, currency: 'USD',
   level: 1, currentStake: 0.35, wins: 0, losses: 0, netPnL: 0,
-  lastTradeEpoch: 0, inTrade: false,
-  proposalEnVuelo: false,
-  pingTimer: null,
-  proposalSentAt: 0,     // timestamp cuando se envió la propuesta
-  orderSentAt: 0,        // timestamp cuando se confirmó el buy
-  lastLatency: 0
+  inTrade: false, proposalEnVuelo: false,
+  pingTimer: null, watchdogTimer: null,
+  ticksSubscribedA: false, ticksSubscribedB: false,
+  lastTickAtA: 0, lastTickAtB: 0,
+  proposalSentAt: 0, lastLatency: 0,
+  pendingTradeMeta: null,
+  // Series
+  A: { symbol: '1HZ75V', prices: [], epochs: [], returns: [], displayPrices: [], lastPrice: 0 },
+  B: { symbol: '1HZ100V', prices: [], epochs: [], returns: [], displayPrices: [], lastPrice: 0 }
 };
 
+// ==========================================================
+// LOG / UI
+// ==========================================================
 function log(msg, color = '#38bdf8') {
   const el = document.getElementById('console');
   const t = new Date().toTimeString().split(' ')[0];
   el.innerHTML += `<div style="color:${color}">[${t}] ${msg}</div>`;
   el.scrollTop = el.scrollHeight;
 }
-
 function setDot(cls, txt) {
   document.getElementById('statusDot').className = `dot ${cls}`;
   document.getElementById('wsStatus').innerText = txt;
 }
 
 // ==========================================================
-// FLUJO DE CONEXIÓN (REST OTP → WebSocket)
+// CONEXIÓN
 // ==========================================================
 async function conectarCuentaOptions() {
   state.token = document.getElementById('cfgToken').value.trim();
   state.appId = document.getElementById('cfgAppId').value.trim();
   const [accId, accType] = document.getElementById('selAccount').value.split('|');
-  state.accountId = accId;
-  state.accountType = accType;
+  state.accountId = accId; state.accountType = accType;
 
   if (!state.token) { alert('Introduce tu token PAT.'); return; }
   if (!state.appId) { alert('El Deriv-App-ID es obligatorio.'); return; }
@@ -269,39 +341,23 @@ async function conectarCuentaOptions() {
         'Content-Type': 'application/json'
       }
     });
-
     const data = await res.json();
-
     if (!res.ok) {
-      const errMsg = data?.error?.message || data?.message || `Error HTTP ${res.status}`;
-      log(`❌ Fallo al obtener OTP: ${errMsg}`, '#f87171');
-      setDot('err', 'Fallo OTP');
-      return;
+      log(`❌ Fallo OTP: ${data?.error?.message || data?.message || res.status}`, '#f87171');
+      setDot('err', 'Fallo OTP'); return;
     }
-
     const wsUrl = data.data?.url || data.url;
-    if (!wsUrl) {
-      log('❌ La respuesta no contiene URL de WebSocket.', '#f87171');
-      setDot('err', 'URL no encontrada');
-      return;
-    }
-
-    log(`✔ OTP obtenido. Conectando WS...`, '#2ea043');
+    if (!wsUrl) { log('❌ Sin URL de WebSocket.', '#f87171'); setDot('err', 'URL no encontrada'); return; }
+    log('✔ OTP obtenido. Conectando WS...', '#2ea043');
     abrirWebSocketOptions(wsUrl);
-
   } catch (e) {
-    log(`❌ Error de red: ${e.message}`, '#f87171');
-    setDot('err', 'Error de red');
+    log(`❌ Error de red: ${e.message}`, '#f87171'); setDot('err', 'Error de red');
   }
 }
 
 function abrirWebSocketOptions(url) {
   try { state.ws = new WebSocket(url); }
-  catch (err) {
-    log(`Error al instanciar socket: ${err.message}`, '#f87171');
-    setDot('err', 'Fallo conexión');
-    return;
-  }
+  catch (err) { log(`Error WS: ${err.message}`, '#f87171'); setDot('err', 'Fallo'); return; }
 
   state.ws.onopen = () => {
     state.isConnected = true;
@@ -314,46 +370,44 @@ function abrirWebSocketOptions(url) {
     document.getElementById('btnManualPut').disabled = false;
     document.getElementById('btnToggleBot').disabled = false;
 
-    log(`✔ WebSocket establecido en cuenta ${state.accountId}.`, '#2ea043');
+    log(`✔ WebSocket establecido en ${state.accountId}.`, '#2ea043');
 
-    // ✅ Ping keepalive cada 25s para mantener la conexión caliente
+    // Ping condicional (solo si no hay ticks suscritos)
     if (state.pingTimer) clearInterval(state.pingTimer);
     state.pingTimer = setInterval(() => {
       if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-        state.ws.send(JSON.stringify({ ping: 1 }));
+        if (!state.ticksSubscribedA && !state.ticksSubscribedB) {
+          state.ws.send(JSON.stringify({ ping: 1 }));
+        }
       }
     }, PING_INTERVAL);
 
+    iniciarWatchdogTicks();
     solicitarBalance();
-    solicitarTicks();
+    solicitarTicks('A');
+    solicitarTicks('B');
   };
 
   state.ws.onmessage = (evt) => {
     try { handleMessage(JSON.parse(evt.data)); }
-    catch (e) { console.error('Error parseando mensaje:', e); }
+    catch (e) { console.error('Parse:', e); }
   };
-
-  state.ws.onerror = () => {
-    log('Fallo de red en el WebSocket.', '#f87171');
-    setDot('err', 'Error');
-  };
-
-  state.ws.onclose = () => {
-    log('Conexión finalizada por el servidor.', '#f0883e');
-    desconectar();
-  };
+  state.ws.onerror = () => { log('Fallo de red WS.', '#f87171'); setDot('err', 'Error'); };
+  state.ws.onclose = () => { log('Conexión finalizada.', '#f0883e'); desconectar(); };
 }
 
 function solicitarBalance() {
-  if (state.ws && state.isConnected) {
-    state.ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
-  }
+  if (state.ws && state.isConnected) state.ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
 }
 
-function solicitarTicks() {
-  log(`Suscribiendo streaming de ${state.symbol}...`, '#38bdf8');
+function solicitarTicks(serie) {
+  if (!state.ws || !state.isConnected) return;
+  const s = state[serie];
+  log(`Suscribiendo Serie ${serie} → ${s.symbol}`, serie === 'A' ? '#38bdf8' : '#f59e0b');
+  if (serie === 'A') state.lastTickAtA = Date.now();
+  else state.lastTickAtB = Date.now();
   state.ws.send(JSON.stringify({
-    ticks_history: state.symbol,
+    ticks_history: s.symbol,
     adjust_start_time: 1,
     count: 65,
     end: 'latest',
@@ -362,198 +416,211 @@ function solicitarTicks() {
   }));
 }
 
+function iniciarWatchdogTicks() {
+  if (state.watchdogTimer) clearInterval(state.watchdogTimer);
+  state.watchdogTimer = setInterval(() => {
+    if (!state.isConnected || !state.ws || state.ws.readyState !== WebSocket.OPEN) return;
+    const now = Date.now();
+    if (now - state.lastTickAtA > WATCHDOG_TIMEOUT) {
+      log(`⚠ Serie A sin ticks en ${((now-state.lastTickAtA)/1000).toFixed(1)}s. Re-suscribiendo...`, '#f0883e');
+      state.ticksSubscribedA = false;
+      solicitarTicks('A');
+    }
+    if (now - state.lastTickAtB > WATCHDOG_TIMEOUT) {
+      log(`⚠ Serie B sin ticks en ${((now-state.lastTickAtB)/1000).toFixed(1)}s. Re-suscribiendo...`, '#f0883e');
+      state.ticksSubscribedB = false;
+      solicitarTicks('B');
+    }
+  }, WATCHDOG_INTERVAL);
+}
+
 // ==========================================================
-// MANEJADOR DE MENSAJES
+// HANDLER DE MENSAJES
 // ==========================================================
 function handleMessage(data) {
   if (data.error) {
-    log(`[DERIV API ERROR]: ${data.error.message}`, '#f87171');
+    log(`[API ERROR]: ${data.error.message}`, '#f87171');
     if (state.inTrade) state.inTrade = false;
     state.proposalEnVuelo = false;
     return;
   }
-
-  // Ping response (ignorar)
   if (data.msg_type === 'ping') return;
 
-  // Balance
   if (data.msg_type === 'balance' && data.balance) {
     state.balance = parseFloat(data.balance.balance);
     state.currency = data.balance.currency || 'USD';
     document.getElementById('kpiBalance').innerText = `$${state.balance.toFixed(2)}`;
   }
 
-  // Historial inicial
+  // History — identificar la serie por símbolo
   if (data.msg_type === 'history' && data.history) {
-    const times = data.history.times;
-    const prices = data.history.prices;
+    const sym = data.echo_req?.ticks_history || data.history?.symbol || '';
+    let serie = null;
+    if (sym === state.A.symbol) serie = 'A';
+    else if (sym === state.B.symbol) serie = 'B';
+    if (!serie) return;
+
+    if (serie === 'A') { state.ticksSubscribedA = true; state.lastTickAtA = Date.now(); }
+    else { state.ticksSubscribedB = true; state.lastTickAtB = Date.now(); }
+
+    const s = state[serie];
+    s.prices = []; s.epochs = []; s.returns = [];
+    const times = data.history.times, prices = data.history.prices;
     for (let i = 0; i < times.length; i++) {
-      calcularTick(parseFloat(prices[i]), parseInt(times[i], 10), false);
+      procesarTick(serie, parseFloat(prices[i]), parseInt(times[i], 10), false);
     }
-    log(`Buffer calibrado con ${times.length} ticks. Bot listo.`, '#2ea043');
+    log(`✔ Serie ${serie} calibrada con ${times.length} ticks.`, serie === 'A' ? '#38bdf8' : '#f59e0b');
+    return;
   }
 
-  // Tick en vivo
+  // Tick — identificar por símbolo
   if (data.msg_type === 'tick' && data.tick) {
-    calcularTick(parseFloat(data.tick.quote), parseInt(data.tick.epoch, 10), true);
+    const sym = data.tick.symbol;
+    let serie = null;
+    if (sym === state.A.symbol) serie = 'A';
+    else if (sym === state.B.symbol) serie = 'B';
+    if (!serie) return;
+
+    if (serie === 'A') { state.ticksSubscribedA = true; state.lastTickAtA = Date.now(); }
+    else { state.ticksSubscribedB = true; state.lastTickAtB = Date.now(); }
+
+    procesarTick(serie, parseFloat(data.tick.quote), parseInt(data.tick.epoch, 10), true);
+    return;
   }
 
-  // ✅ PASO 1: Respuesta de PROPOSAL → enviar BUY inmediatamente
+  // Proposal
   if (data.msg_type === 'proposal' && data.proposal) {
-    const proposalId = data.proposal.id;
-    const askPrice = data.proposal.ask_price;
-    const tProposal = performance.now();
-    const propLatency = tProposal - state.proposalSentAt;
-
-    if (!proposalId || !askPrice) {
-      log('❌ Propuesta sin id o ask_price. Abortando.', '#f87171');
-      state.inTrade = false;
-      state.proposalEnVuelo = false;
-      return;
+    const id = data.proposal.id, ask = data.proposal.ask_price;
+    if (!id || !ask) {
+      log('❌ Propuesta inválida.', '#f87171');
+      state.inTrade = false; state.proposalEnVuelo = false; return;
     }
-
-    log(`✔ Propuesta en ${propLatency.toFixed(0)}ms (ask: $${askPrice}). Enviando BUY...`, '#38bdf8');
-
-    // Enviar compra INMEDIATAMENTE, sin logs ni cálculos intermedios
-    state.ws.send(JSON.stringify({
-      buy: proposalId,
-      price: askPrice
-    }));
+    state.ws.send(JSON.stringify({ buy: id, price: ask }));
+    return;
   }
 
-  // ✅ PASO 2: Confirmación de BUY
+  // Buy
   if (data.msg_type === 'buy' && data.buy) {
-    const contractId = data.buy.contract_id;
-    const tBuy = performance.now();
-    const totalLatency = tBuy - state.proposalSentAt;
+    const cid = data.buy.contract_id;
+    const totalLatency = performance.now() - state.proposalSentAt;
     state.lastLatency = totalLatency;
-
     document.getElementById('kpiLatency').innerText = `${totalLatency.toFixed(0)} ms`;
-    document.getElementById('kpiLatencyInfo').innerText = `Propuesta → Buy`;
-
-    log(`🚀 CONFIRMADA: #${contractId} por $${parseFloat(data.buy.buy_price).toFixed(2)} (latencia total: ${totalLatency.toFixed(0)}ms)`, '#2ea043');
-
+    log(`🚀 #${cid} confirmado (${totalLatency.toFixed(0)}ms)`, '#2ea043');
     state.proposalEnVuelo = false;
-
-    state.ws.send(JSON.stringify({
-      proposal_open_contract: 1,
-      contract_id: contractId,
-      subscribe: 1
-    }));
+    state.ws.send(JSON.stringify({ proposal_open_contract: 1, contract_id: cid, subscribe: 1 }));
+    return;
   }
 
-  // ✅ PASO 3: Seguimiento del contrato
+  // Liquidación
   if (data.msg_type === 'proposal_open_contract' && data.proposal_open_contract) {
-    const poc = data.proposal_open_contract;
-    if (poc.is_sold === 1) {
-      liquidarContrato(poc);
+    if (data.proposal_open_contract.is_sold === 1) {
+      liquidarContrato(data.proposal_open_contract);
     }
   }
 }
 
 // ==========================================================
-// MOTOR Z-SCORE (optimizado)
+// PROCESAMIENTO DE TICK POR SERIE
 // ==========================================================
-function calcularTick(price, epoch, permitirDisparo) {
-  state.prices.push(price);
-  state.epochs.push(epoch);
-  if (state.prices.length > 70) { state.prices.shift(); state.epochs.shift(); }
-  if (state.prices.length < 2) return;
+function procesarTick(serie, price, epoch, permitirDisparo) {
+  const s = state[serie];
+  s.prices.push(price);
+  s.epochs.push(epoch);
+  if (s.prices.length > 70) { s.prices.shift(); s.epochs.shift(); }
 
-  const prev = state.prices[state.prices.length - 2];
-  const ret = Math.log(price / prev);
-  state.returns.push(ret);
-  if (state.returns.length > 60) state.returns.shift();
+  if (s.prices.length >= 2) {
+    const prev = s.prices[s.prices.length - 2];
+    const ret = Math.log(price / prev);
+    s.returns.push(ret);
+    if (s.returns.length > 60) s.returns.shift();
+  }
+  s.lastPrice = price;
 
-  // Actualizar UI
-  document.getElementById('kpiPrice').innerText = price.toFixed(2);
-  const deltaPct = ((price - prev) / prev) * 100;
-  const elDelta = document.getElementById('kpiDelta');
-  elDelta.innerText = `Δ ${deltaPct >= 0 ? '+' : ''}${deltaPct.toFixed(3)}%`;
-  elDelta.className = deltaPct >= 0 ? 'kpi-sub txt-green' : 'kpi-sub txt-red';
-  document.getElementById('kpiTickCount').innerText = `Buffer: ${state.returns.length} / 60`;
+  // Visual
+  s.displayPrices.push(price);
+  if (s.displayPrices.length > MAX_POINTS) s.displayPrices.shift();
+  dibujarChart();
 
-  // ✅ PRIORIDAD MÁXIMA: evaluar disparo ANTES de actualizar UI secundaria
-  if (permitirDisparo && state.botRunning && !state.inTrade && !state.proposalEnVuelo && state.returns.length >= 20) {
-    const z = calcularZScore();
-    if (z !== null) {
-      document.getElementById('kpiZScore').innerText = `${z >= 0 ? '+' : ''}${z.toFixed(2)}σ`;
-      const clamped = Math.max(-4, Math.min(4, z));
-      document.getElementById('gaugeCursor').style.left = `${((clamped + 4) / 8) * 100}%`;
+  // UI
+  const elP = document.getElementById(serie === 'A' ? 'priceA' : 'priceB');
+  const elD = document.getElementById(serie === 'A' ? 'deltaA' : 'deltaB');
+  elP.innerText = price.toFixed(2);
+  if (s.prices.length >= 2) {
+    const prev = s.prices[s.prices.length - 2];
+    const dPct = ((price - prev) / prev) * 100;
+    elD.innerText = `Δ ${dPct >= 0 ? '+' : ''}${dPct.toFixed(3)}%`;
+    elD.className = dPct >= 0 ? 'kpi-sub txt-green' : 'kpi-sub txt-red';
+  }
 
-      // Disparo inmediato si cruza umbral
-      if (z >= 3.2 || z <= -3.2) {
-        evaluarGatillo(z, epoch);
-      }
-    }
-  } else if (state.returns.length >= 20) {
-    const z = calcularZScore();
-    if (z !== null) {
-      document.getElementById('kpiZScore').innerText = `${z >= 0 ? '+' : ''}${z.toFixed(2)}σ`;
-      const clamped = Math.max(-4, Math.min(4, z));
-      document.getElementById('gaugeCursor').style.left = `${((clamped + 4) / 8) * 100}%`;
+  if (s.returns.length >= 20) {
+    const z = calcularZScore(s);
+    const elZ = document.getElementById(serie === 'A' ? 'zA' : 'zB');
+    const elBar = document.getElementById(serie === 'A' ? 'zbarA' : 'zbarB');
+    elZ.innerText = `Z: ${z >= 0 ? '+' : ''}${z.toFixed(2)}σ · Buffer: ${s.returns.length}/60`;
+    const clamped = Math.max(-4, Math.min(4, z));
+    elBar.style.left = `${((clamped + 4) / 8) * 100}%`;
+
+    document.getElementById('kpiZScore').innerText = `${z >= 0 ? '+' : ''}${z.toFixed(2)}σ`;
+    document.getElementById('kpiZAsset').innerText = `Serie ${serie} · ${s.symbol}`;
+
+    if (permitirDisparo && state.botRunning && !state.inTrade && !state.proposalEnVuelo) {
+      evaluarGatillo(serie, z, epoch);
     }
   }
 }
 
-function calcularZScore() {
-  const n = state.returns.length;
-  if (n < 20) return null;
-  const last = state.returns[n - 1];
-  const mean = state.returns.reduce((a, b) => a + b, 0) / n;
+function calcularZScore(s) {
+  const n = s.returns.length;
+  if (n < 20) return 0;
+  const last = s.returns[n - 1];
+  const mean = s.returns.reduce((a, b) => a + b, 0) / n;
   let varSum = 0;
-  for (let i = 0; i < n; i++) varSum += Math.pow(state.returns[i] - mean, 2);
+  for (let i = 0; i < n; i++) varSum += Math.pow(s.returns[i] - mean, 2);
   const std = Math.sqrt(varSum / (n - 1));
   if (std <= 1e-12) return 0;
   return (last - mean) / std;
 }
 
-function evaluarGatillo(z, epoch) {
-  if (epoch - state.lastTradeEpoch < 1) return; // mínimo 1 tick entre operaciones
-  if (state.proposalEnVuelo) return;
+// ==========================================================
+// GATILLO DUAL
+// ==========================================================
+function evaluarGatillo(serie, z, epoch) {
+  const mode = document.getElementById('cfgMode').value;
+  if (mode !== 'dual' && mode !== serie) return;
 
-  const isPut = z >= 3.2;
-  const isCall = z <= -3.2;
+  const isPut = z >= 3.2, isCall = z <= -3.2;
   if (!isPut && !isCall) return;
 
   const tp = parseFloat(document.getElementById('cfgTP').value) || 5.0;
   const sl = parseFloat(document.getElementById('cfgSL').value) || 5.0;
   if (state.netPnL >= tp || state.netPnL <= -sl) {
-    log('TP/SL de sesión alcanzado. Bot en pausa.', '#f0883e');
-    toggleBot();
-    return;
+    log('TP/SL alcanzado. Bot en pausa.', '#f0883e'); toggleBot(); return;
   }
 
   state.inTrade = true;
   state.proposalEnVuelo = true;
-  state.lastTradeEpoch = epoch;
   const direction = isCall ? 'CALL' : 'PUT';
 
-  // ✅ Enviar INMEDIATAMENTE, sin logs previos
-  enviarOrden(direction, state.currentStake);
+  state.pendingTradeMeta = { serie, z, symbol: state[serie].symbol };
 
-  // Log después del envío
-  log(`⚡ DISPARO: Z = ${z.toFixed(2)}σ → ${direction} ($${state.currentStake.toFixed(2)})`, '#f0883e');
+  enviarOrden(serie, direction, state.currentStake);
+  log(`⚡ Serie ${serie} dispara: Z=${z.toFixed(2)}σ → ${direction} ($${state.currentStake.toFixed(2)})`, serie === 'A' ? '#38bdf8' : '#f59e0b');
 }
 
 function ejecutarManual(direction) {
-  if (!state.isConnected) { alert('Conecta primero tu cuenta.'); return; }
-  if (state.inTrade || state.proposalEnVuelo) { log('Ya hay una operación en curso.', '#f0883e'); return; }
-
-  state.inTrade = true;
-  state.proposalEnVuelo = true;
+  if (!state.isConnected) { alert('Conecta primero.'); return; }
+  if (state.inTrade || state.proposalEnVuelo) { log('Operación en curso.', '#f0883e'); return; }
+  const serie = document.getElementById('cfgManualAsset').value;
   const stake = parseFloat(document.getElementById('cfgBaseStake').value) || 0.35;
-  enviarOrden(direction, stake);
-  log(`Enviando orden manual ${direction} por $${stake.toFixed(2)}...`, '#38bdf8');
+  state.inTrade = true; state.proposalEnVuelo = true;
+  state.pendingTradeMeta = { serie, z: 0, symbol: state[serie].symbol };
+  enviarOrden(serie, direction, stake);
+  log(`Manual Serie ${serie}: ${direction} $${stake.toFixed(2)}`, '#38bdf8');
 }
 
-// ==========================================================
-// FLUJO PROPOSAL → BUY (optimizado)
-// ==========================================================
-function enviarOrden(direction, amount) {
+function enviarOrden(serie, direction, amount) {
   state.proposalSentAt = performance.now();
-
-  const request = {
+  state.ws.send(JSON.stringify({
     proposal: 1,
     amount: amount,
     basis: 'stake',
@@ -561,16 +628,15 @@ function enviarOrden(direction, amount) {
     currency: state.currency,
     duration: 1,
     duration_unit: 't',
-    underlying_symbol: state.symbol
-  };
-
-  state.ws.send(JSON.stringify(request));
+    underlying_symbol: state[serie].symbol
+  }));
 }
 
 // ==========================================================
-// LIQUIDACIÓN Y MÉTRICAS
+// LIQUIDACIÓN
 // ==========================================================
 function liquidarContrato(poc) {
+  const meta = state.pendingTradeMeta || { serie: 'A', z: 0 };
   state.inTrade = false;
   state.proposalEnVuelo = false;
 
@@ -579,20 +645,20 @@ function liquidarContrato(poc) {
 
   if (isWin) {
     state.wins++;
-    log(`✅ GANADA: #${poc.contract_id} | +$${profit.toFixed(2)}`, '#2ea043');
+    log(`✅ GANADA Serie ${meta.serie}: #${poc.contract_id} +$${profit.toFixed(2)}`, '#2ea043');
     state.level = 1;
     state.currentStake = parseFloat(document.getElementById('cfgBaseStake').value) || 0.35;
   } else {
     state.losses++;
-    log(`❌ PERDIDA: #${poc.contract_id} | -$${Math.abs(profit).toFixed(2)}`, '#f87171');
+    log(`❌ PERDIDA Serie ${meta.serie}: #${poc.contract_id} -$${Math.abs(profit).toFixed(2)}`, '#f87171');
     if (state.level < 3) {
       state.level++;
       state.currentStake = parseFloat((state.currentStake * MULT_MARTINGALE).toFixed(2));
       log(`[MARTINGALA] Nivel ${state.level} → $${state.currentStake.toFixed(2)}`, '#f0883e');
     } else {
-      log('[MARTINGALA] Cap L3 alcanzado. Reset a Nivel 1.', '#f87171');
       state.level = 1;
       state.currentStake = parseFloat(document.getElementById('cfgBaseStake').value) || 0.35;
+      log('[MARTINGALA] Reset a Nivel 1.', '#f0883e');
     }
   }
 
@@ -600,20 +666,23 @@ function liquidarContrato(poc) {
   state.balance += profit;
   document.getElementById('kpiBalance').innerText = `$${state.balance.toFixed(2)}`;
   actualizarMetricas();
-  agregarFilaHistorial(poc, isWin);
+  agregarFilaHistorial(poc, isWin, meta);
+  state.pendingTradeMeta = null;
 }
 
-function agregarFilaHistorial(poc, isWin) {
+function agregarFilaHistorial(poc, isWin, meta) {
   const tbody = document.getElementById('tblTradesBody');
-  if (tbody.children.length === 1 && tbody.children[0].children.length === 1) {
-    tbody.innerHTML = '';
-  }
+  if (tbody.children.length === 1 && tbody.children[0].children.length === 1) tbody.innerHTML = '';
   const tr = document.createElement('tr');
   const t = new Date(poc.purchase_time * 1000).toTimeString().split(' ')[0];
+  const colorSerie = meta.serie === 'A' ? 'var(--v75)' : 'var(--v100)';
   tr.innerHTML = `
-    <td>${poc.contract_id}</td><td>${t}</td><td>${poc.contract_type}</td>
-    <td>$${parseFloat(poc.buy_price).toFixed(2)}</td><td>${poc.entry_tick || '--'}</td>
-    <td>${poc.exit_tick || '--'}</td>
+    <td>${poc.contract_id}</td>
+    <td>${t}</td>
+    <td style="color:${colorSerie}; font-weight:700;">Serie ${meta.serie}</td>
+    <td>${poc.contract_type}</td>
+    <td>$${parseFloat(poc.buy_price).toFixed(2)}</td>
+    <td>${meta.z.toFixed(2)}σ</td>
     <td style="color:${isWin ? 'var(--green)' : 'var(--red)'}; font-weight:bold;">${isWin ? '+' : ''}$${parseFloat(poc.profit).toFixed(2)}</td>
     <td class="txt-cyan">${state.lastLatency.toFixed(0)} ms</td>
     <td><span class="pill ${isWin ? 'pill-win' : 'pill-loss'}">${isWin ? 'WIN' : 'LOSS'}</span></td>
@@ -625,7 +694,7 @@ function actualizarMetricas() {
   const total = state.wins + state.losses;
   const wr = total > 0 ? ((state.wins / total) * 100).toFixed(1) : '0.0';
   document.getElementById('kpiWinRate').innerText = `${wr}%`;
-  document.getElementById('kpiWinLoss').innerText = `${state.wins}W / ${state.losses}L (${total} Totales)`;
+  document.getElementById('kpiWinLoss').innerText = `${state.wins}W / ${state.losses}L (${total})`;
   const pnlEl = document.getElementById('kpiPnL');
   pnlEl.innerText = `PnL Sesión: ${state.netPnL >= 0 ? '+' : ''}$${state.netPnL.toFixed(2)}`;
   pnlEl.className = state.netPnL >= 0 ? 'kpi-sub txt-green' : 'kpi-sub txt-red';
@@ -634,34 +703,114 @@ function actualizarMetricas() {
   document.getElementById('lblTradeCount').innerText = `${total} operaciones`;
 }
 
+// ==========================================================
+// GRÁFICO CANVAS
+// ==========================================================
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+
+function dibujarChart() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Fondo + grid
+  ctx.fillStyle = '#020617'; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(48,54,61,0.5)'; ctx.lineWidth = 1;
+  for (let i = 1; i < 5; i++) {
+    const y = (H / 5) * i;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+  for (let i = 1; i < 8; i++) {
+    const x = (W / 8) * i;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  // línea central
+  ctx.strokeStyle = 'rgba(100,116,139,0.7)';
+  ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke();
+
+  const dataA = state.A.displayPrices;
+  const dataB = state.B.displayPrices;
+  if (dataA.length < 2 && dataB.length < 2) {
+    document.getElementById('lblChartInfo').innerText = 'Esperando datos...';
+    return;
+  }
+
+  // Escala común basada en % de cambio desde primer punto
+  const normA = normalizar(dataA);
+  const normB = normalizar(dataB);
+  const allNorm = [...normA, ...normB];
+  const minV = Math.min(...allNorm, -0.01);
+  const maxV = Math.max(...allNorm, 0.01);
+  const range = Math.max(maxV - minV, 0.0005);
+
+  dibujarSerie(normA, W, H, minV, range, '#38bdf8');
+  dibujarSerie(normB, W, H, minV, range, '#f59e0b');
+
+  document.getElementById('lblChartInfo').innerText =
+    `A: ${dataA.length} pts · B: ${dataB.length} pts`;
+}
+
+function normalizar(arr) {
+  if (arr.length === 0) return [];
+  const base = arr[0];
+  return arr.map(v => (v - base) / base);
+}
+
+function dibujarSerie(norm, W, H, minV, range, color) {
+  if (norm.length < 2) return;
+  const stepX = W / (MAX_POINTS - 1);
+  const offsetX = W - (norm.length - 1) * stepX;
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  for (let i = 0; i < norm.length; i++) {
+    const x = offsetX + i * stepX;
+    const y = H - ((norm[i] - minV) / range) * (H * 0.85) - H * 0.075;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // Punto final
+  const lastX = offsetX + (norm.length - 1) * stepX;
+  const lastY = H - ((norm[norm.length - 1] - minV) / range) * (H * 0.85) - H * 0.075;
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(lastX, lastY, 3, 0, Math.PI * 2); ctx.fill();
+}
+
+// ==========================================================
+// CONTROLES
+// ==========================================================
 function toggleBot() {
   state.botRunning = !state.botRunning;
   const btn = document.getElementById('btnToggleBot');
   if (state.botRunning) {
-    btn.innerText = '⏸ Pausar Bot Automático';
+    btn.innerText = '⏸ Pausar Bot Dual';
     btn.className = 'btn btn-red';
-    log('▶ BOT ACTIVADO: Monitoreando microestructura...', '#2ea043');
+    log('▶ BOT DUAL ACTIVADO', '#2ea043');
   } else {
-    btn.innerText = '▶ Iniciar Bot Automático';
+    btn.innerText = '▶ Iniciar Bot Dual';
     btn.className = 'btn btn-green';
-    log('⏸ BOT PAUSADO.', '#f0883e');
+    log('⏸ BOT PAUSADO', '#f0883e');
   }
 }
 
-function cambiarActivo() {
-  state.symbol = document.getElementById('cfgSymbol').value;
-  document.getElementById('badgeAsset').innerText = state.symbol;
-  state.prices = []; state.epochs = []; state.returns = [];
-  if (state.isConnected && state.ws) solicitarTicks();
+function cambiarActivo(serie) {
+  const sel = document.getElementById(serie === 'A' ? 'cfgSymbolA' : 'cfgSymbolB');
+  const s = state[serie];
+  s.symbol = sel.value;
+  s.prices = []; s.epochs = []; s.returns = []; s.displayPrices = [];
+  if (state.isConnected) solicitarTicks(serie);
 }
 
 function desconectar() {
   if (state.pingTimer) { clearInterval(state.pingTimer); state.pingTimer = null; }
+  if (state.watchdogTimer) { clearInterval(state.watchdogTimer); state.watchdogTimer = null; }
   if (state.ws) { try { state.ws.close(); } catch(e){} state.ws = null; }
-  state.isConnected = false;
-  state.botRunning = false;
-  state.inTrade = false;
-  state.proposalEnVuelo = false;
+  state.isConnected = false; state.botRunning = false;
+  state.inTrade = false; state.proposalEnVuelo = false;
+  state.ticksSubscribedA = false; state.ticksSubscribedB = false;
   document.getElementById('btnConnect').style.display = 'inline-block';
   document.getElementById('btnDisconnect').style.display = 'none';
   document.getElementById('btnManualCall').disabled = true;
