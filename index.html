@@ -55,7 +55,6 @@
     .pill { display: inline-block; padding: 2px 5px; border-radius: 4px; font-weight: 700; font-size: 0.68rem; }
     .pill-win { background: rgba(46, 160, 67, 0.2); color: var(--green); border: 1px solid var(--green); }
     .pill-loss { background: rgba(248, 81, 73, 0.2); color: var(--red); border: 1px solid var(--red); }
-    .pill-pending { background: rgba(240, 136, 62, 0.2); color: var(--amber); border: 1px solid var(--amber); }
     #console { background: #020617; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-family: monospace; font-size: 0.73rem; height: 140px; overflow-y: auto; color: var(--cyan); }
   </style>
 </head>
@@ -68,7 +67,7 @@
       <span class="badge-sym" id="badgeAsset">1HZ75V</span>
       <div>
         <h2 style="font-size: 1.05rem; color:#fff;">Deriv Options API v1 (Tokens PAT)</h2>
-        <p style="font-size: 0.72rem; color: var(--text-muted);">Flujo Proposal → Buy con OTP seguro</p>
+        <p style="font-size: 0.72rem; color: var(--text-muted);">Ejecución rápida vía proposal → buy</p>
       </div>
     </div>
     <div style="display: flex; gap: 8px; align-items: center;">
@@ -132,6 +131,11 @@
       <div id="kpiLevel" class="kpi-val">Nivel 1</div>
       <div id="kpiNextStake" class="kpi-sub">Próximo Stake: $0.35</div>
     </div>
+    <div class="kpi-card">
+      <div class="kpi-lbl">Latencia</div>
+      <div id="kpiLatency" class="kpi-val txt-green">-- ms</div>
+      <div id="kpiLatencyInfo" class="kpi-sub">Última orden</div>
+    </div>
   </div>
 
   <div class="trading-grid">
@@ -190,10 +194,10 @@
     <div class="table-scroll">
       <table>
         <thead>
-          <tr><th>ID Contrato</th><th>Hora</th><th>Tipo</th><th>Stake</th><th>Entrada</th><th>Salida</th><th>Resultado</th><th>Estado</th></tr>
+          <tr><th>ID Contrato</th><th>Hora</th><th>Tipo</th><th>Stake</th><th>Entrada</th><th>Salida</th><th>Resultado</th><th>Latencia</th><th>Estado</th></tr>
         </thead>
         <tbody id="tblTradesBody">
-          <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 14px;">Esperando conexión...</td></tr>
+          <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 14px;">Esperando conexión...</td></tr>
         </tbody>
       </table>
     </div>
@@ -210,6 +214,7 @@
 const API_BASE = 'https://api.derivws.com';
 const ENDPOINT_OTP = `${API_BASE}/trading/v1/options/accounts/{accountId}/otp`;
 const MULT_MARTINGALE = 2.14;
+const PING_INTERVAL = 25000;
 
 const state = {
   token: '', appId: '', accountId: '', accountType: 'demo',
@@ -218,7 +223,11 @@ const state = {
   prices: [], epochs: [], returns: [],
   level: 1, currentStake: 0.35, wins: 0, losses: 0, netPnL: 0,
   lastTradeEpoch: 0, inTrade: false,
-  pendingContractId: null
+  proposalEnVuelo: false,
+  pingTimer: null,
+  proposalSentAt: 0,     // timestamp cuando se envió la propuesta
+  orderSentAt: 0,        // timestamp cuando se confirmó el buy
+  lastLatency: 0
 };
 
 function log(msg, color = '#38bdf8') {
@@ -244,7 +253,7 @@ async function conectarCuentaOptions() {
   state.accountType = accType;
 
   if (!state.token) { alert('Introduce tu token PAT.'); return; }
-  if (!state.appId) { alert('El Deriv-App-ID es obligatorio para autenticación PAT.'); return; }
+  if (!state.appId) { alert('El Deriv-App-ID es obligatorio.'); return; }
 
   desconectar();
   setDot('busy', 'Obteniendo OTP...');
@@ -306,6 +315,15 @@ function abrirWebSocketOptions(url) {
     document.getElementById('btnToggleBot').disabled = false;
 
     log(`✔ WebSocket establecido en cuenta ${state.accountId}.`, '#2ea043');
+
+    // ✅ Ping keepalive cada 25s para mantener la conexión caliente
+    if (state.pingTimer) clearInterval(state.pingTimer);
+    state.pingTimer = setInterval(() => {
+      if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        state.ws.send(JSON.stringify({ ping: 1 }));
+      }
+    }, PING_INTERVAL);
+
     solicitarBalance();
     solicitarTicks();
   };
@@ -351,8 +369,12 @@ function handleMessage(data) {
   if (data.error) {
     log(`[DERIV API ERROR]: ${data.error.message}`, '#f87171');
     if (state.inTrade) state.inTrade = false;
+    state.proposalEnVuelo = false;
     return;
   }
+
+  // Ping response (ignorar)
+  if (data.msg_type === 'ping') return;
 
   // Balance
   if (data.msg_type === 'balance' && data.balance) {
@@ -376,29 +398,42 @@ function handleMessage(data) {
     calcularTick(parseFloat(data.tick.quote), parseInt(data.tick.epoch, 10), true);
   }
 
-  // ✅ PASO 1: Respuesta de PROPOSAL → enviar BUY
+  // ✅ PASO 1: Respuesta de PROPOSAL → enviar BUY inmediatamente
   if (data.msg_type === 'proposal' && data.proposal) {
     const proposalId = data.proposal.id;
     const askPrice = data.proposal.ask_price;
+    const tProposal = performance.now();
+    const propLatency = tProposal - state.proposalSentAt;
 
     if (!proposalId || !askPrice) {
-      log('❌ Propuesta sin id o ask_price. Abortando compra.', '#f87171');
+      log('❌ Propuesta sin id o ask_price. Abortando.', '#f87171');
       state.inTrade = false;
+      state.proposalEnVuelo = false;
       return;
     }
 
-    log(`✔ Propuesta recibida (ask: $${askPrice}). Enviando BUY...`, '#38bdf8');
+    log(`✔ Propuesta en ${propLatency.toFixed(0)}ms (ask: $${askPrice}). Enviando BUY...`, '#38bdf8');
+
+    // Enviar compra INMEDIATAMENTE, sin logs ni cálculos intermedios
     state.ws.send(JSON.stringify({
       buy: proposalId,
       price: askPrice
     }));
   }
 
-  // ✅ PASO 2: Confirmación de BUY → suscribirse al contrato
+  // ✅ PASO 2: Confirmación de BUY
   if (data.msg_type === 'buy' && data.buy) {
     const contractId = data.buy.contract_id;
-    state.pendingContractId = contractId;
-    log(`🚀 ORDEN CONFIRMADA: Contrato #${contractId} por $${parseFloat(data.buy.buy_price).toFixed(2)}`, '#38bdf8');
+    const tBuy = performance.now();
+    const totalLatency = tBuy - state.proposalSentAt;
+    state.lastLatency = totalLatency;
+
+    document.getElementById('kpiLatency').innerText = `${totalLatency.toFixed(0)} ms`;
+    document.getElementById('kpiLatencyInfo').innerText = `Propuesta → Buy`;
+
+    log(`🚀 CONFIRMADA: #${contractId} por $${parseFloat(data.buy.buy_price).toFixed(2)} (latencia total: ${totalLatency.toFixed(0)}ms)`, '#2ea043');
+
+    state.proposalEnVuelo = false;
 
     state.ws.send(JSON.stringify({
       proposal_open_contract: 1,
@@ -407,7 +442,7 @@ function handleMessage(data) {
     }));
   }
 
-  // ✅ PASO 3: Seguimiento del contrato hasta que se venda
+  // ✅ PASO 3: Seguimiento del contrato
   if (data.msg_type === 'proposal_open_contract' && data.proposal_open_contract) {
     const poc = data.proposal_open_contract;
     if (poc.is_sold === 1) {
@@ -417,7 +452,7 @@ function handleMessage(data) {
 }
 
 // ==========================================================
-// MOTOR Z-SCORE
+// MOTOR Z-SCORE (optimizado)
 // ==========================================================
 function calcularTick(price, epoch, permitirDisparo) {
   state.prices.push(price);
@@ -430,6 +465,7 @@ function calcularTick(price, epoch, permitirDisparo) {
   state.returns.push(ret);
   if (state.returns.length > 60) state.returns.shift();
 
+  // Actualizar UI
   document.getElementById('kpiPrice').innerText = price.toFixed(2);
   const deltaPct = ((price - prev) / prev) * 100;
   const elDelta = document.getElementById('kpiDelta');
@@ -437,26 +473,45 @@ function calcularTick(price, epoch, permitirDisparo) {
   elDelta.className = deltaPct >= 0 ? 'kpi-sub txt-green' : 'kpi-sub txt-red';
   document.getElementById('kpiTickCount').innerText = `Buffer: ${state.returns.length} / 60`;
 
-  if (state.returns.length >= 20) {
-    const n = state.returns.length;
-    const mean = state.returns.reduce((a, b) => a + b, 0) / n;
-    let varSum = 0;
-    for (let i = 0; i < n; i++) varSum += Math.pow(state.returns[i] - mean, 2);
-    const std = Math.sqrt(varSum / (n - 1));
-    const z = std > 1e-12 ? (ret - mean) / std : 0;
+  // ✅ PRIORIDAD MÁXIMA: evaluar disparo ANTES de actualizar UI secundaria
+  if (permitirDisparo && state.botRunning && !state.inTrade && !state.proposalEnVuelo && state.returns.length >= 20) {
+    const z = calcularZScore();
+    if (z !== null) {
+      document.getElementById('kpiZScore').innerText = `${z >= 0 ? '+' : ''}${z.toFixed(2)}σ`;
+      const clamped = Math.max(-4, Math.min(4, z));
+      document.getElementById('gaugeCursor').style.left = `${((clamped + 4) / 8) * 100}%`;
 
-    document.getElementById('kpiZScore').innerText = `${z >= 0 ? '+' : ''}${z.toFixed(2)}σ`;
-    const clamped = Math.max(-4, Math.min(4, z));
-    document.getElementById('gaugeCursor').style.left = `${((clamped + 4) / 8) * 100}%`;
-
-    if (permitirDisparo && state.botRunning && !state.inTrade) {
-      evaluarGatillo(z, epoch);
+      // Disparo inmediato si cruza umbral
+      if (z >= 3.2 || z <= -3.2) {
+        evaluarGatillo(z, epoch);
+      }
+    }
+  } else if (state.returns.length >= 20) {
+    const z = calcularZScore();
+    if (z !== null) {
+      document.getElementById('kpiZScore').innerText = `${z >= 0 ? '+' : ''}${z.toFixed(2)}σ`;
+      const clamped = Math.max(-4, Math.min(4, z));
+      document.getElementById('gaugeCursor').style.left = `${((clamped + 4) / 8) * 100}%`;
     }
   }
 }
 
+function calcularZScore() {
+  const n = state.returns.length;
+  if (n < 20) return null;
+  const last = state.returns[n - 1];
+  const mean = state.returns.reduce((a, b) => a + b, 0) / n;
+  let varSum = 0;
+  for (let i = 0; i < n; i++) varSum += Math.pow(state.returns[i] - mean, 2);
+  const std = Math.sqrt(varSum / (n - 1));
+  if (std <= 1e-12) return 0;
+  return (last - mean) / std;
+}
+
 function evaluarGatillo(z, epoch) {
-  if (epoch - state.lastTradeEpoch < 3) return;
+  if (epoch - state.lastTradeEpoch < 1) return; // mínimo 1 tick entre operaciones
+  if (state.proposalEnVuelo) return;
+
   const isPut = z >= 3.2;
   const isCall = z <= -3.2;
   if (!isPut && !isCall) return;
@@ -470,28 +525,34 @@ function evaluarGatillo(z, epoch) {
   }
 
   state.inTrade = true;
+  state.proposalEnVuelo = true;
   state.lastTradeEpoch = epoch;
   const direction = isCall ? 'CALL' : 'PUT';
-  log(`⚡ DISPARO: Z = ${z.toFixed(2)}σ → ${direction} ($${state.currentStake.toFixed(2)})`, '#f0883e');
+
+  // ✅ Enviar INMEDIATAMENTE, sin logs previos
   enviarOrden(direction, state.currentStake);
+
+  // Log después del envío
+  log(`⚡ DISPARO: Z = ${z.toFixed(2)}σ → ${direction} ($${state.currentStake.toFixed(2)})`, '#f0883e');
 }
 
 function ejecutarManual(direction) {
   if (!state.isConnected) { alert('Conecta primero tu cuenta.'); return; }
-  if (state.inTrade) { log('Ya hay una operación en curso.', '#f0883e'); return; }
+  if (state.inTrade || state.proposalEnVuelo) { log('Ya hay una operación en curso.', '#f0883e'); return; }
 
   state.inTrade = true;
+  state.proposalEnVuelo = true;
   const stake = parseFloat(document.getElementById('cfgBaseStake').value) || 0.35;
-  log(`Enviando orden manual ${direction} por $${stake.toFixed(2)}...`, '#38bdf8');
   enviarOrden(direction, stake);
+  log(`Enviando orden manual ${direction} por $${stake.toFixed(2)}...`, '#38bdf8');
 }
 
 // ==========================================================
-// FLUJO PROPOSAL → BUY
+// FLUJO PROPOSAL → BUY (optimizado)
 // ==========================================================
 function enviarOrden(direction, amount) {
-  // El campo correcto es 'underlying_symbol' (no 'symbol')
-  // y se solicita una PROPOSAL, no un BUY directo.
+  state.proposalSentAt = performance.now();
+
   const request = {
     proposal: 1,
     amount: amount,
@@ -503,7 +564,6 @@ function enviarOrden(direction, amount) {
     underlying_symbol: state.symbol
   };
 
-  log(`→ Solicitando propuesta: ${direction} $${amount.toFixed(2)} @ ${state.symbol}`, '#38bdf8');
   state.ws.send(JSON.stringify(request));
 }
 
@@ -512,7 +572,7 @@ function enviarOrden(direction, amount) {
 // ==========================================================
 function liquidarContrato(poc) {
   state.inTrade = false;
-  state.pendingContractId = null;
+  state.proposalEnVuelo = false;
 
   const profit = parseFloat(poc.profit);
   const isWin = profit > 0;
@@ -555,6 +615,7 @@ function agregarFilaHistorial(poc, isWin) {
     <td>$${parseFloat(poc.buy_price).toFixed(2)}</td><td>${poc.entry_tick || '--'}</td>
     <td>${poc.exit_tick || '--'}</td>
     <td style="color:${isWin ? 'var(--green)' : 'var(--red)'}; font-weight:bold;">${isWin ? '+' : ''}$${parseFloat(poc.profit).toFixed(2)}</td>
+    <td class="txt-cyan">${state.lastLatency.toFixed(0)} ms</td>
     <td><span class="pill ${isWin ? 'pill-win' : 'pill-loss'}">${isWin ? 'WIN' : 'LOSS'}</span></td>
   `;
   tbody.insertBefore(tr, tbody.firstChild);
@@ -595,10 +656,12 @@ function cambiarActivo() {
 }
 
 function desconectar() {
+  if (state.pingTimer) { clearInterval(state.pingTimer); state.pingTimer = null; }
   if (state.ws) { try { state.ws.close(); } catch(e){} state.ws = null; }
   state.isConnected = false;
   state.botRunning = false;
   state.inTrade = false;
+  state.proposalEnVuelo = false;
   document.getElementById('btnConnect').style.display = 'inline-block';
   document.getElementById('btnDisconnect').style.display = 'none';
   document.getElementById('btnManualCall').disabled = true;
