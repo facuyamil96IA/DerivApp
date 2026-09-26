@@ -61,12 +61,7 @@
     .zbar { position: relative; height: 8px; background: #020617; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); margin-top: 6px; }
     .zbar-center { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: #64748b; }
     .zbar-cursor { position: absolute; top: 0; bottom: 0; width: 4px; margin-left: -2px; background: #fff; border-radius: 1px; transition: left 0.1s linear; }
-    .trade-badge {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: rgba(0,0,0,0.75); padding: 6px 14px; border-radius: 6px;
-      font-family: monospace; font-weight: 700; font-size: 0.85rem; pointer-events: none;
-      opacity: 0; transition: opacity 0.2s;
-    }
+    .trade-badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.75); padding: 6px 14px; border-radius: 6px; font-family: monospace; font-weight: 700; font-size: 0.85rem; pointer-events: none; opacity: 0; transition: opacity 0.2s; }
     .trade-badge.show { opacity: 1; }
     .trade-badge.rise { color: var(--green); border: 1px solid var(--green); }
     .trade-badge.fall { color: var(--red); border: 1px solid var(--red); }
@@ -93,7 +88,7 @@
       <span class="badge-sym">DUAL</span>
       <div>
         <h2 style="font-size: 1.05rem; color:#fff;">Deriv Options API v1 — Micro-Reversión Z-Score</h2>
-        <p style="font-size: 0.72rem; color: var(--text-muted);">V75 + V100 · Cooldown Asimétrico · Martingala Configurable</p>
+        <p style="font-size: 0.72rem; color: var(--text-muted);">V75 + V100 · Streak Filter · Cooldown Asimétrico · Auto-Reconnect</p>
       </div>
     </div>
     <div style="display: flex; gap: 8px; align-items: center;">
@@ -126,7 +121,7 @@
       </div>
       <div style="display: flex; gap: 8px;">
         <button id="btnConnect" class="btn btn-green" onclick="conectarCuentaOptions()">Conectar</button>
-        <button id="btnDisconnect" class="btn btn-red" onclick="desconectar()" style="display: none;">Desconectar</button>
+        <button id="btnDisconnect" class="btn btn-red" onclick="desconectar(true)" style="display: none;">Desconectar</button>
       </div>
     </div>
   </div>
@@ -214,7 +209,7 @@
   <div class="trading-grid">
     <div class="box-card">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="font-size: 0.9rem; color:#fff;">Motor Estadístico Dual</h3>
+        <h3 style="font-size: 0.9rem; color:#fff;">Motor Estadístico Dual + Streak Filter</h3>
         <span style="font-size: 0.72rem; color: var(--text-muted);">Umbral: |Z| ≥ 3.2σ · Duración: 1 tick</span>
       </div>
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
@@ -251,9 +246,16 @@
         <div>
           <label>Martingala</label>
           <select id="cfgMartingale">
-            <option value="shared" selected>Compartida (nivel único)</option>
-            <option value="independent">Independiente (por serie)</option>
+            <option value="shared">Compartida (nivel único)</option>
+            <option value="independent" selected>Independiente (por serie)</option>
           </select>
+        </div>
+        <div>
+          <label>Filtro Momentum</label>
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text); margin-top: 6px; cursor: pointer;">
+            <input type="checkbox" id="cfgStreakFilter" checked style="width: auto;">
+            Streak Filter (3 ticks)
+          </label>
         </div>
       </div>
 
@@ -289,19 +291,8 @@
       <table>
         <thead>
           <tr>
-            <th>#ID</th>
-            <th>Hora</th>
-            <th>Serie</th>
-            <th>Tipo</th>
-            <th>Nivel</th>
-            <th>Z-Score</th>
-            <th>Stake</th>
-            <th>Entrada</th>
-            <th>Salida</th>
-            <th>Resultado</th>
-            <th>Balance</th>
-            <th>Latencia</th>
-            <th>Estado</th>
+            <th>#ID</th><th>Hora</th><th>Serie</th><th>Tipo</th><th>Nivel</th><th>Z-Score</th>
+            <th>Stake</th><th>Entrada</th><th>Salida</th><th>Resultado</th><th>Balance</th><th>Latencia</th><th>Estado</th>
           </tr>
         </thead>
         <tbody id="tblTradesBody">
@@ -322,10 +313,12 @@
 const API_BASE = 'https://api.derivws.com';
 const ENDPOINT_OTP = `${API_BASE}/trading/v1/options/accounts/{accountId}/otp`;
 const MULT_MARTINGALE = 2.14;
-const PING_INTERVAL = 25000;
+const PING_INTERVAL = 30000;
 const WATCHDOG_INTERVAL = 3000;
 const WATCHDOG_TIMEOUT = 6000;
 const MAX_POINTS = 120;
+const RECONNECT_BASE_DELAY = 1000;
+const RECONNECT_MAX_DELAY = 30000;
 
 const COOLDOWN = {
   '1HZ75V':  { win: 12, loss: 65,  interval: 1 },
@@ -342,28 +335,18 @@ const state = {
   ws: null, isConnected: false, botRunning: false,
   balance: 0, currency: 'USD',
   initialBalance: 0, peakBalance: 0, maxDD: 0,
-  // Martingala compartida
   sharedLevel: 1,
-  // Martingala independiente
   indepLevel: { A: 1, B: 1 },
   wins: 0, losses: 0, netPnL: 0,
   grossProfit: 0, grossLoss: 0,
   pingTimer: null, watchdogTimer: null,
+  reconnectAttempts: 0, reconnectTimer: null,
   ticksSubscribedA: false, ticksSubscribedB: false,
   lastTickAtA: 0, lastTickAtB: 0,
   proposalSentAt: 0, lastLatency: 0,
-  // Trades
-  trades: [],        // histórico completo
-  openTrades: {},    // { A: trade | null, B: trade | null }
-  nextTradeId: 1,
-  A: {
-    symbol: '1HZ75V', prices: [], epochs: [], returns: [], displayPrices: [],
-    lastPrice: 0, lastTradeEpoch: 0, lastTradeStatus: null, cooldownUntil: 0
-  },
-  B: {
-    symbol: '1HZ100V', prices: [], epochs: [], returns: [], displayPrices: [],
-    lastPrice: 0, lastTradeEpoch: 0, lastTradeStatus: null, cooldownUntil: 0
-  }
+  trades: [], openTrades: {}, nextTradeId: 1,
+  A: { symbol: '1HZ75V', prices: [], epochs: [], returns: [], displayPrices: [], lastPrice: 0, lastTradeEpoch: 0, lastTradeStatus: null, cooldownUntil: 0 },
+  B: { symbol: '1HZ100V', prices: [], epochs: [], returns: [], displayPrices: [], lastPrice: 0, lastTradeEpoch: 0, lastTradeStatus: null, cooldownUntil: 0 }
 };
 
 // ==========================================================
@@ -383,15 +366,9 @@ function setDot(cls, txt) {
 // ==========================================================
 // HELPERS DE MODO
 // ==========================================================
-function getConcurrencyMode() {
-  return document.getElementById('cfgConcurrency').value;
-}
-function getMartingaleMode() {
-  return document.getElementById('cfgMartingale').value;
-}
-function getBaseStake() {
-  return parseFloat(document.getElementById('cfgBaseStake').value) || 0.35;
-}
+function getConcurrencyMode() { return document.getElementById('cfgConcurrency').value; }
+function getMartingaleMode() { return document.getElementById('cfgMartingale').value; }
+function getBaseStake() { return parseFloat(document.getElementById('cfgBaseStake').value) || 0.35; }
 function stakeForLevel(level, base) {
   if (level === 1) return base;
   if (level === 2) return parseFloat((base * MULT_MARTINGALE).toFixed(2));
@@ -405,18 +382,40 @@ function setCurrentLevel(serie, level) {
   if (getMartingaleMode() === 'shared') state.sharedLevel = level;
   else state.indepLevel[serie] = level;
 }
-
-// Verifica si una serie puede abrir una nueva operación
 function puedeDisparar(serie) {
   const s = state[serie];
-  // 1. Cooldown
   if (Date.now() < s.cooldownUntil) return false;
-  // 2. Trade propio abierto (siempre bloquea)
   if (state.openTrades[serie]) return false;
-  // 3. Modo exclusivo: bloquea si la otra serie tiene trade abierto
   if (getConcurrencyMode() === 'exclusive') {
     const otra = serie === 'A' ? 'B' : 'A';
     if (state.openTrades[otra]) return false;
+  }
+  return true;
+}
+
+// ==========================================================
+// STREAK FILTER (Microestructura)
+// ==========================================================
+function validateMicrostructureStreak(returnsBuffer, signalDirection) {
+  const STREAK_LOOKBACK = 3;
+  if (!returnsBuffer || returnsBuffer.length < STREAK_LOOKBACK + 1) return true;
+
+  const len = returnsBuffer.length;
+  const rPrev1 = returnsBuffer[len - 2];
+  const rPrev2 = returnsBuffer[len - 3];
+  const rPrev3 = returnsBuffer[len - 4];
+
+  if (signalDirection === 'PUT') {
+    if (rPrev1 > 0 && rPrev2 > 0 && rPrev3 > 0) {
+      log(`🚫 [STREAK FILTER] PUT bloqueado — racha alcista previa`, '#f0883e');
+      return false;
+    }
+  }
+  if (signalDirection === 'CALL') {
+    if (rPrev1 < 0 && rPrev2 < 0 && rPrev3 < 0) {
+      log(`🚫 [STREAK FILTER] CALL bloqueado — racha bajista previa`, '#f0883e');
+      return false;
+    }
   }
   return true;
 }
@@ -433,7 +432,7 @@ async function conectarCuentaOptions() {
   if (!state.token) { alert('Introduce tu token PAT.'); return; }
   if (!state.appId) { alert('El Deriv-App-ID es obligatorio.'); return; }
 
-  desconectar();
+  if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
   setDot('busy', 'Obteniendo OTP...');
   log(`Solicitando OTP para ${state.accountId} (${state.accountType.toUpperCase()})...`, '#f0883e');
 
@@ -450,7 +449,8 @@ async function conectarCuentaOptions() {
     const data = await res.json();
     if (!res.ok) {
       log(`❌ Fallo OTP: ${data?.error?.message || data?.message || res.status}`, '#f87171');
-      setDot('err', 'Fallo OTP'); return;
+      setDot('err', 'Fallo OTP');
+      return;
     }
     const wsUrl = data.data?.url || data.url;
     if (!wsUrl) { log('❌ Sin URL de WebSocket.', '#f87171'); setDot('err', 'URL no encontrada'); return; }
@@ -467,6 +467,7 @@ function abrirWebSocketOptions(url) {
 
   state.ws.onopen = () => {
     state.isConnected = true;
+    state.reconnectAttempts = 0;
     setDot('live', `${state.accountType.toUpperCase()} Conectada`);
     document.getElementById('lblActiveAccount').innerText = `${state.accountId} [${state.accountType.toUpperCase()}]`;
     document.getElementById('lblActiveAccount').style.color = state.accountType === 'demo' ? 'var(--cyan)' : 'var(--red)';
@@ -478,12 +479,11 @@ function abrirWebSocketOptions(url) {
 
     log(`✔ WebSocket establecido en ${state.accountId}.`, '#2ea043');
 
+    // ✅ PING KEEPALIVE INCONDICIONAL cada 30s (según doc oficial Deriv)
     if (state.pingTimer) clearInterval(state.pingTimer);
     state.pingTimer = setInterval(() => {
       if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-        if (!state.ticksSubscribedA && !state.ticksSubscribedB) {
-          state.ws.send(JSON.stringify({ ping: 1 }));
-        }
+        state.ws.send(JSON.stringify({ ping: 1 }));
       }
     }, PING_INTERVAL);
 
@@ -499,7 +499,30 @@ function abrirWebSocketOptions(url) {
     catch (e) { console.error('Parse:', e); }
   };
   state.ws.onerror = () => { log('Fallo de red WS.', '#f87171'); setDot('err', 'Error'); };
-  state.ws.onclose = () => { log('Conexión finalizada.', '#f0883e'); desconectar(); };
+  state.ws.onclose = () => {
+    log('Conexión finalizada. Programando reconexión...', '#f0883e');
+    desconectar(false);
+    programarReconexion();
+  };
+}
+
+function programarReconexion() {
+  if (state.reconnectTimer) return;
+  if (!state.botRunning && !state.isConnected) {
+    // Si el usuario desconectó manualmente, no reconectar
+    return;
+  }
+  const delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, state.reconnectAttempts), RECONNECT_MAX_DELAY);
+  state.reconnectAttempts++;
+  log(`🔄 Reconectando en ${(delay/1000).toFixed(1)}s (intento ${state.reconnectAttempts})...`, '#f0883e');
+  state.reconnectTimer = setTimeout(async () => {
+    state.reconnectTimer = null;
+    try {
+      await conectarCuentaOptions();
+    } catch (e) {
+      programarReconexion();
+    }
+  }, delay);
 }
 
 function solicitarBalance() {
@@ -522,25 +545,34 @@ function solicitarTicks(serie) {
   }));
 }
 
+function reSuscribirSerie(serie) {
+  if (!state.ws || !state.isConnected) return;
+  const s = state[serie];
+  log(`🔄 [WATCHDOG] Re-suscribiendo Serie ${serie} con forget_all previo...`, '#f0883e');
+  
+  // Primero olvidar suscripciones de ticks existentes
+  state.ws.send(JSON.stringify({ forget_all: 'ticks' }));
+  
+  // Esperar y re-suscribir limpio
+  setTimeout(() => {
+    solicitarTicks(serie);
+  }, 800);
+}
+
 function iniciarWatchdogTicks() {
   if (state.watchdogTimer) clearInterval(state.watchdogTimer);
   state.watchdogTimer = setInterval(() => {
     if (!state.isConnected || !state.ws || state.ws.readyState !== WebSocket.OPEN) return;
     const now = Date.now();
     if (now - state.lastTickAtA > WATCHDOG_TIMEOUT) {
-      log(`⚠ Serie A sin ticks en ${((now-state.lastTickAtA)/1000).toFixed(1)}s. Re-suscribiendo...`, '#f0883e');
-      state.ticksSubscribedA = false; solicitarTicks('A');
+      reSuscribirSerie('A');
     }
     if (now - state.lastTickAtB > WATCHDOG_TIMEOUT) {
-      log(`⚠ Serie B sin ticks en ${((now-state.lastTickAtB)/1000).toFixed(1)}s. Re-suscribiendo...`, '#f0883e');
-      state.ticksSubscribedB = false; solicitarTicks('B');
+      reSuscribirSerie('B');
     }
   }, WATCHDOG_INTERVAL);
 }
 
-// ==========================================================
-// ACTUALIZADOR DE COOLDOWN EN UI
-// ==========================================================
 function iniciarActualizadorCooldown() {
   setInterval(() => {
     ['A', 'B'].forEach(serie => {
@@ -568,8 +600,12 @@ function iniciarActualizadorCooldown() {
 // ==========================================================
 function handleMessage(data) {
   if (data.error) {
+    // Ignorar errores de "already subscribed" del watchdog
+    if (data.error.message && data.error.message.includes('already subscribed')) {
+      console.warn('[API] Ya suscrito, ignorando');
+      return;
+    }
     log(`[API ERROR]: ${data.error.message}`, '#f87171');
-    // Liberar cualquier trade pendiente
     Object.keys(state.openTrades).forEach(k => {
       const t = state.openTrades[k];
       if (t && t.status === 'PENDING_BUY') {
@@ -591,7 +627,6 @@ function handleMessage(data) {
     document.getElementById('kpiBalance').innerText = `$${state.balance.toFixed(2)}`;
   }
 
-  // History
   if (data.msg_type === 'history' && data.history) {
     const sym = data.echo_req?.ticks_history || data.history?.symbol || '';
     let serie = null;
@@ -612,7 +647,6 @@ function handleMessage(data) {
     return;
   }
 
-  // Tick
   if (data.msg_type === 'tick' && data.tick) {
     const sym = data.tick.symbol;
     let serie = null;
@@ -627,12 +661,10 @@ function handleMessage(data) {
     return;
   }
 
-  // Proposal
   if (data.msg_type === 'proposal' && data.proposal) {
     const id = data.proposal.id, ask = data.proposal.ask_price;
     if (!id || !ask) {
       log('❌ Propuesta inválida.', '#f87171');
-      // Liberar trade pendiente
       Object.keys(state.openTrades).forEach(k => {
         const t = state.openTrades[k];
         if (t && t.status === 'PENDING_BUY') {
@@ -646,14 +678,12 @@ function handleMessage(data) {
     return;
   }
 
-  // Buy confirmado
   if (data.msg_type === 'buy' && data.buy) {
     const cid = data.buy.contract_id;
     const totalLatency = performance.now() - state.proposalSentAt;
     state.lastLatency = totalLatency;
     document.getElementById('kpiLatency').innerText = `${totalLatency.toFixed(0)} ms`;
 
-    // Encontrar el trade pendiente y asignarle el contract_id
     Object.keys(state.openTrades).forEach(k => {
       const t = state.openTrades[k];
       if (t && t.status === 'PENDING_BUY') {
@@ -661,7 +691,6 @@ function handleMessage(data) {
         t.latency = totalLatency;
         t.status = 'OPEN';
         updateJournalRow(t, 'OPEN');
-        // Mostrar badge visual en el panel
         showTradeBadge(k, t.type, 'open');
       }
     });
@@ -671,7 +700,6 @@ function handleMessage(data) {
     return;
   }
 
-  // Liquidación
   if (data.msg_type === 'proposal_open_contract' && data.proposal_open_contract) {
     if (data.proposal_open_contract.is_sold === 1) {
       liquidarContrato(data.proposal_open_contract);
@@ -680,7 +708,7 @@ function handleMessage(data) {
 }
 
 // ==========================================================
-// PROCESAMIENTO DE TICK POR SERIE
+// PROCESAMIENTO DE TICK
 // ==========================================================
 function procesarTick(serie, price, epoch, permitirDisparo) {
   const s = state[serie];
@@ -737,7 +765,7 @@ function calcularZScore(s) {
 }
 
 // ==========================================================
-// GATILLO DUAL
+// GATILLO DUAL CON STREAK FILTER
 // ==========================================================
 function evaluarGatillo(serie, z, epoch) {
   const mode = document.getElementById('cfgMode').value;
@@ -748,17 +776,24 @@ function evaluarGatillo(serie, z, epoch) {
 
   if (!puedeDisparar(serie)) return;
 
-  // Verificar TP/SL
+  const direction = isCall ? 'CALL' : 'PUT';
+
+  // ✅ STREAK FILTER — veto por racha de momentum previa
+  const streakFilterEnabled = document.getElementById('cfgStreakFilter')?.checked ?? true;
+  if (streakFilterEnabled) {
+    const s = state[serie];
+    const aprobado = validateMicrostructureStreak(s.returns, direction);
+    if (!aprobado) return;
+  }
+
   const tp = parseFloat(document.getElementById('cfgTP').value) || 5.0;
   const sl = parseFloat(document.getElementById('cfgSL').value) || 5.0;
   if (state.netPnL >= tp || state.netPnL <= -sl) {
     log('TP/SL alcanzado. Bot en pausa.', '#f0883e'); toggleBot(); return;
   }
 
-  const direction = isCall ? 'CALL' : 'PUT';
   const level = getCurrentLevel(serie);
   const stake = stakeForLevel(level, getBaseStake());
-
   triggerTrade(serie, direction, z, epoch, state[serie].lastPrice, level, stake);
 }
 
@@ -770,57 +805,38 @@ function ejecutarManual(direction) {
     const otra = serie === 'A' ? 'B' : 'A';
     if (state.openTrades[otra]) { log(`Modo exclusivo: la otra serie tiene operación abierta.`, '#f0883e'); return; }
   }
-
   const level = getCurrentLevel(serie);
   const stake = parseFloat(document.getElementById('cfgBaseStake').value) || 0.35;
   triggerTrade(serie, direction, 0, Math.floor(Date.now() / 1000), state[serie].lastPrice, level, stake, true);
 }
 
 // ==========================================================
-// TRIGGER TRADE (crea el registro y envía la orden)
+// TRIGGER TRADE
 // ==========================================================
 function triggerTrade(serie, direction, z, epoch, entryPrice, level, stake, manual = false) {
+  // ⚠️ REGLA ARQUITECTÓNICA: Independencia entre series
+  if (getMartingaleMode() === 'shared') {
+    console.warn('[ARCH] Martingala compartida detectada. Forzando modo independiente.');
+    document.getElementById('cfgMartingale').value = 'independent';
+  }
+
   const s = state[serie];
   const trade = {
-    id: state.nextTradeId++,
-    serie: serie,
-    symbol: s.symbol,
-    type: direction,           // 'CALL' | 'PUT'
-    level: level,
-    stake: stake,
-    zScore: z,
-    entryPrice: entryPrice,
-    exitPrice: null,
-    profit: null,
-    status: 'PENDING_BUY',     // PENDING_BUY → OPEN → WIN/LOSS → ERROR
-    startTime: Date.now(),
-    purchaseTime: null,
-    exitTime: null,
-    contractId: null,
-    latency: 0,
-    manual: manual,
-    balanceAfter: null
+    id: state.nextTradeId++, serie, symbol: s.symbol, type: direction,
+    level, stake, zScore: z, entryPrice, exitPrice: null, profit: null,
+    status: 'PENDING_BUY', startTime: Date.now(), purchaseTime: null,
+    exitTime: null, contractId: null, latency: 0, manual, balanceAfter: null
   };
 
   state.openTrades[serie] = trade;
   state.trades.push(trade);
-
-  // Enviar propuesta
   state.proposalSentAt = performance.now();
   state.ws.send(JSON.stringify({
-    proposal: 1,
-    amount: stake,
-    basis: 'stake',
-    contract_type: direction,
-    currency: state.currency,
-    duration: 1,
-    duration_unit: 't',
-    underlying_symbol: s.symbol
+    proposal: 1, amount: stake, basis: 'stake', contract_type: direction,
+    currency: state.currency, duration: 1, duration_unit: 't', underlying_symbol: s.symbol
   }));
 
   log(`⚡ Serie ${serie} (${s.symbol}): Z=${z.toFixed(2)}σ → ${direction} $${stake.toFixed(2)} [L${level}]${manual ? ' (manual)' : ''}`, serie === 'A' ? '#38bdf8' : '#f59e0b');
-
-  // Añadir fila inmediatamente
   appendJournalRow(trade);
 }
 
@@ -829,17 +845,12 @@ function triggerTrade(serie, direction, z, epoch, entryPrice, level, stake, manu
 // ==========================================================
 function liquidarContrato(poc) {
   const cid = poc.contract_id;
-  // Buscar el trade correspondiente
-  let serie = null;
-  let trade = null;
+  let serie = null, trade = null;
   for (const k of ['A', 'B']) {
     const t = state.openTrades[k];
     if (t && t.contractId === cid) { serie = k; trade = t; break; }
   }
-  if (!trade) {
-    log(`⚠ Liquidación para contrato desconocido ${cid}`, '#f0883e');
-    return;
-  }
+  if (!trade) { log(`⚠ Liquidación para contrato desconocido ${cid}`, '#f0883e'); return; }
 
   const s = state[serie];
   const profit = parseFloat(poc.profit);
@@ -850,17 +861,13 @@ function liquidarContrato(poc) {
   trade.status = isWin ? 'WIN' : 'LOSS';
   trade.exitTime = Date.now();
   trade.purchaseTime = poc.purchase_time ? poc.purchase_time * 1000 : trade.startTime;
-
-  // Liberar el slot
   state.openTrades[serie] = null;
 
-  // Cooldown por símbolo
   const cfg = COOLDOWN[s.symbol] || { win: 12, loss: 65 };
   const cdSeconds = isWin ? cfg.win : cfg.loss;
   s.lastTradeStatus = isWin ? 'WIN' : 'LOSS';
   s.cooldownUntil = Date.now() + cdSeconds * 1000;
 
-  // Actualizar contadores y balance
   if (isWin) {
     state.wins++;
     state.grossProfit += profit;
@@ -871,7 +878,6 @@ function liquidarContrato(poc) {
     log(`❌ PERDIDA Serie ${serie} #${cid} -$${Math.abs(profit).toFixed(2)} · Cooldown ${cdSeconds}s`, '#f87171');
   }
 
-  // Actualizar martingala
   const currentLvl = trade.level;
   if (isWin) {
     setCurrentLevel(serie, 1);
@@ -889,38 +895,26 @@ function liquidarContrato(poc) {
   state.balance += profit;
   trade.balanceAfter = state.balance;
 
-  // Max DD
   if (state.balance > state.peakBalance) state.peakBalance = state.balance;
   const dd = ((state.peakBalance - state.balance) / state.peakBalance) * 100;
   if (dd > state.maxDD) state.maxDD = dd;
 
   document.getElementById('kpiBalance').innerText = `$${state.balance.toFixed(2)}`;
   actualizarMetricas();
-
-  // Actualizar fila en la tabla
   updateJournalRow(trade, trade.status);
-
-  // Ocultar badge visual
   showTradeBadge(serie, trade.type, 'close');
 }
 
 // ==========================================================
-// DIARIO DE OPERACIONES
+// DIARIO
 // ==========================================================
 function appendJournalRow(trade) {
   const tbody = document.getElementById('tblTradesBody');
-  // Limpiar mensaje de "esperando"
-  if (tbody.children.length === 1 && tbody.children[0].children.length === 1) {
-    tbody.innerHTML = '';
-  }
+  if (tbody.children.length === 1 && tbody.children[0].children.length === 1) tbody.innerHTML = '';
   const tr = document.createElement('tr');
   tr.id = `trade-${trade.id}`;
-
   const colorSerie = trade.serie === 'A' ? 'var(--v75)' : 'var(--v100)';
-  const typePill = trade.type === 'CALL'
-    ? '<span class="pill pill-rise">▲ CALL</span>'
-    : '<span class="pill pill-fall">▼ PUT</span>';
-
+  const typePill = trade.type === 'CALL' ? '<span class="pill pill-rise">▲ CALL</span>' : '<span class="pill pill-fall">▼ PUT</span>';
   tr.innerHTML = `
     <td>#${trade.id}</td>
     <td class="time-cell">${new Date(trade.startTime).toTimeString().split(' ')[0]}</td>
@@ -942,8 +936,6 @@ function appendJournalRow(trade) {
 function updateJournalRow(trade, status) {
   const tr = document.getElementById(`trade-${trade.id}`);
   if (!tr) return;
-
-  // Entrada: usar la que ya teníamos (la del tick de disparo)
   tr.querySelector('.entry-cell').innerText = trade.entryPrice.toFixed(2);
 
   if (status === 'OPEN' || status === 'PENDING_BUY') {
@@ -951,48 +943,32 @@ function updateJournalRow(trade, status) {
     tr.querySelector('.lat-cell').innerText = trade.latency ? `${trade.latency.toFixed(0)} ms` : '--';
     return;
   }
-
   if (status === 'ERROR') {
     tr.querySelector('.status-cell').innerHTML = '<span class="pill pill-loss">ERROR</span>';
     return;
   }
 
-  // WIN / LOSS
   const isWin = status === 'WIN';
-  const exitCell = tr.querySelector('.exit-cell');
+  tr.querySelector('.exit-cell').innerText = trade.exitPrice != null ? trade.exitPrice.toFixed(2) : '--';
   const profitCell = tr.querySelector('.profit-cell');
-  const balanceCell = tr.querySelector('.balance-cell');
-
-  exitCell.innerText = trade.exitPrice != null ? trade.exitPrice.toFixed(2) : '--';
-  profitCell.innerText = trade.profit != null
-    ? `${trade.profit >= 0 ? '+' : ''}$${trade.profit.toFixed(2)}`
-    : '--';
+  profitCell.innerText = trade.profit != null ? `${trade.profit >= 0 ? '+' : ''}$${trade.profit.toFixed(2)}` : '--';
   profitCell.style.color = isWin ? 'var(--green)' : 'var(--red)';
   profitCell.style.fontWeight = 'bold';
-  balanceCell.innerText = trade.balanceAfter != null ? `$${trade.balanceAfter.toFixed(2)}` : '--';
+  tr.querySelector('.balance-cell').innerText = trade.balanceAfter != null ? `$${trade.balanceAfter.toFixed(2)}` : '--';
   tr.querySelector('.lat-cell').innerText = trade.latency ? `${trade.latency.toFixed(0)} ms` : '--';
   tr.querySelector('.status-cell').innerHTML = isWin
     ? '<span class="pill pill-win">✅ GANADA</span>'
     : '<span class="pill pill-loss">❌ PERDIDA</span>';
 }
 
-// ==========================================================
-// BADGE VISUAL SOBRE EL GRÁFICO
-// ==========================================================
 function showTradeBadge(serie, type, phase) {
   const badge = document.getElementById(serie === 'A' ? 'badgeA' : 'badgeB');
   if (!badge) return;
-  if (phase === 'close') {
-    badge.classList.remove('show');
-    return;
-  }
+  if (phase === 'close') { badge.classList.remove('show'); return; }
   badge.innerText = type === 'CALL' ? '▲ CALL' : '▼ PUT';
   badge.className = `trade-badge ${type === 'CALL' ? 'rise' : 'fall'} show`;
 }
 
-// ==========================================================
-// MÉTRICAS
-// ==========================================================
 function actualizarMetricas() {
   const total = state.wins + state.losses;
   const wr = total > 0 ? ((state.wins / total) * 100).toFixed(1) : '0.0';
@@ -1003,32 +979,25 @@ function actualizarMetricas() {
   pnlEl.innerText = `PnL Sesión: ${state.netPnL >= 0 ? '+' : ''}$${state.netPnL.toFixed(2)}`;
   pnlEl.className = state.netPnL >= 0 ? 'kpi-sub txt-green' : 'kpi-sub txt-red';
 
-  // Niveles y stakes
   const base = getBaseStake();
   if (getMartingaleMode() === 'shared') {
     const lvl = state.sharedLevel;
-    const stk = stakeForLevel(lvl, base);
     document.getElementById('kpiLevel').innerText = `L${lvl} (compartida)`;
-    document.getElementById('kpiNextStake').innerText = `Próximo: $${stk.toFixed(2)}`;
+    document.getElementById('kpiNextStake').innerText = `Próximo: $${stakeForLevel(lvl, base).toFixed(2)}`;
   } else {
     const lA = state.indepLevel.A, lB = state.indepLevel.B;
-    const sA = stakeForLevel(lA, base);
-    const sB = stakeForLevel(lB, base);
     document.getElementById('kpiLevel').innerText = `A:L${lA} / B:L${lB}`;
-    document.getElementById('kpiNextStake').innerText = `Próx: $${sA.toFixed(2)} / $${sB.toFixed(2)}`;
+    document.getElementById('kpiNextStake').innerText = `Próx: $${stakeForLevel(lA, base).toFixed(2)} / $${stakeForLevel(lB, base).toFixed(2)}`;
   }
 
-  // Drawdown + Profit Factor
   document.getElementById('kpiDD').innerText = `${state.maxDD.toFixed(2)}%`;
-  const pf = state.grossLoss > 0
-    ? (state.grossProfit / state.grossLoss).toFixed(2)
-    : (state.grossProfit > 0 ? '∞' : '0.00');
+  const pf = state.grossLoss > 0 ? (state.grossProfit / state.grossLoss).toFixed(2) : (state.grossProfit > 0 ? '∞' : '0.00');
   document.getElementById('kpiPF').innerText = `Profit Factor: ${pf}`;
   document.getElementById('lblTradeCount').innerText = `${total} operaciones`;
 }
 
 // ==========================================================
-// GRÁFICOS SEPARADOS
+// GRÁFICOS
 // ==========================================================
 const ctxA = document.getElementById('chartA').getContext('2d');
 const ctxB = document.getElementById('chartB').getContext('2d');
@@ -1037,41 +1006,27 @@ function dibujarChart(serie) {
   const canvas = serie === 'A' ? document.getElementById('chartA') : document.getElementById('chartB');
   const ctx = serie === 'A' ? ctxA : ctxB;
   const color = serie === 'A' ? '#38bdf8' : '#f59e0b';
-
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
-
   ctx.fillStyle = '#020617'; ctx.fillRect(0, 0, W, H);
   ctx.strokeStyle = 'rgba(48,54,61,0.5)'; ctx.lineWidth = 1;
-  for (let i = 1; i < 5; i++) {
-    const y = (H / 5) * i;
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-  }
-  for (let i = 1; i < 8; i++) {
-    const x = (W / 8) * i;
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-  }
+  for (let i = 1; i < 5; i++) { const y = (H / 5) * i; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  for (let i = 1; i < 8; i++) { const x = (W / 8) * i; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
 
   const data = state[serie].displayPrices;
   if (data.length < 2) return;
-
-  const minP = Math.min(...data);
-  const maxP = Math.max(...data);
+  const minP = Math.min(...data), maxP = Math.max(...data);
   const range = Math.max(maxP - minP, 1e-9);
-
   ctx.strokeStyle = 'rgba(100,116,139,0.4)';
   ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke();
 
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1.8;
-  ctx.beginPath();
+  ctx.strokeStyle = color; ctx.lineWidth = 1.8; ctx.beginPath();
   const stepX = W / (MAX_POINTS - 1);
   const offsetX = W - (data.length - 1) * stepX;
   for (let i = 0; i < data.length; i++) {
     const x = offsetX + i * stepX;
     const y = H - ((data[i] - minP) / range) * (H * 0.85) - H * 0.075;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.stroke();
 
@@ -1090,26 +1045,14 @@ function exportCSV() {
   state.trades.forEach(t => {
     const startIso = new Date(t.startTime).toISOString();
     const exitIso = t.exitTime ? new Date(t.exitTime).toISOString() : '';
-    csv += [
-      t.id, t.serie, t.symbol, t.type, t.level,
-      t.zScore.toFixed(3), t.stake, t.entryPrice,
-      t.exitPrice != null ? t.exitPrice : '',
-      t.profit != null ? t.profit : '',
-      t.status,
-      t.balanceAfter != null ? t.balanceAfter : '',
-      t.latency ? t.latency.toFixed(0) : '',
-      startIso, exitIso
-    ].join(',') + '\n';
+    csv += [t.id, t.serie, t.symbol, t.type, t.level, t.zScore.toFixed(3), t.stake, t.entryPrice,
+      t.exitPrice != null ? t.exitPrice : '', t.profit != null ? t.profit : '', t.status,
+      t.balanceAfter != null ? t.balanceAfter : '', t.latency ? t.latency.toFixed(0) : '', startIso, exitIso].join(',') + '\n';
   });
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `deriv_trades_${Date.now()}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const a = document.createElement('a'); a.href = url; a.download = `deriv_trades_${Date.now()}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   log('CSV exportado.', '#2ea043');
 }
 
@@ -1139,20 +1082,28 @@ function cambiarActivo(serie) {
   if (state.isConnected) solicitarTicks(serie);
 }
 
-function desconectar() {
+function desconectar(manual = true) {
   if (state.pingTimer) { clearInterval(state.pingTimer); state.pingTimer = null; }
   if (state.watchdogTimer) { clearInterval(state.watchdogTimer); state.watchdogTimer = null; }
+  if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
   if (state.ws) { try { state.ws.close(); } catch(e){} state.ws = null; }
-  state.isConnected = false; state.botRunning = false;
+  state.isConnected = false;
+  if (manual) {
+    state.botRunning = false;
+    state.reconnectAttempts = 0;
+  }
   state.ticksSubscribedA = false; state.ticksSubscribedB = false;
   state.openTrades = { A: null, B: null };
-  document.getElementById('btnConnect').style.display = 'inline-block';
-  document.getElementById('btnDisconnect').style.display = 'none';
-  document.getElementById('btnManualCall').disabled = true;
-  document.getElementById('btnManualPut').disabled = true;
-  document.getElementById('btnToggleBot').disabled = true;
-  document.getElementById('lblActiveAccount').innerText = 'Ninguna';
-  setDot('', 'Desconectado');
+  state.indepLevel = { A: 1, B: 1 };
+  if (manual) {
+    document.getElementById('btnConnect').style.display = 'inline-block';
+    document.getElementById('btnDisconnect').style.display = 'none';
+    document.getElementById('btnManualCall').disabled = true;
+    document.getElementById('btnManualPut').disabled = true;
+    document.getElementById('btnToggleBot').disabled = true;
+    document.getElementById('lblActiveAccount').innerText = 'Ninguna';
+    setDot('', 'Desconectado');
+  }
 }
 </script>
 </body>
