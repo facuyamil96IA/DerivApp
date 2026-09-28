@@ -136,7 +136,7 @@
         </select>
       </div>
       <div>
-        <button id="btnFetchAccounts" class="btn btn-amber" onclick="buscarCuentas()">🔍 Buscar cuentas</button>
+        <button id="btnFetchAccounts" class="btn btn-amber" onclick="buscarCuentas()">Buscar cuentas</button>
       </div>
       <div style="display: flex; gap: 8px;">
         <button id="btnConnect" class="btn btn-green" onclick="conectarCuentaOptions()" disabled>Conectar</button>
@@ -148,7 +148,7 @@
 
   <div class="tg-card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
-      <h3 style="font-size: 0.9rem; color: var(--tg);">📱 Notificaciones Telegram</h3>
+      <h3 style="font-size: 0.9rem; color: var(--tg);">Notificaciones Telegram</h3>
       <label style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-muted); cursor: pointer;">
         <input type="checkbox" id="cfgTgEnabled" checked style="width: auto;">
         Notificaciones activas
@@ -164,13 +164,13 @@
         <input type="text" id="cfgTgChatId" placeholder="Ej: 123456789" autocomplete="off">
       </div>
       <div>
-        <button class="btn btn-tg" onclick="detectarChatId()">🔎 Detectar Chat ID</button>
+        <button class="btn btn-tg" onclick="detectarChatId()">Detectar Chat ID</button>
       </div>
       <div>
-        <button class="btn btn-tg" onclick="probarTelegram()">📤 Probar envío</button>
+        <button class="btn btn-tg" onclick="probarTelegram()">Probar envío</button>
       </div>
       <div>
-        <button class="btn" onclick="guardarTelegramConfig()">💾 Guardar</button>
+        <button class="btn" onclick="guardarTelegramConfig()">Guardar</button>
       </div>
     </div>
     <div id="tgInfo" class="tg-info">
@@ -180,7 +180,7 @@
 
   <div class="kpi-grid">
     <div class="kpi-card">
-      <div class="kpi-lbl">Balance</div>
+      <div class="kpi-lbl">Balance (Deriv)</div>
       <div id="kpiBalance" class="kpi-val">$0.00</div>
       <div id="kpiPnL" class="kpi-sub">PnL Sesión: +$0.00</div>
     </div>
@@ -412,7 +412,7 @@
         </div>
       </div>
 
-      <button id="btnToggleBot" class="btn btn-green" onclick="toggleBot()" disabled>▶ Iniciar Bot</button>
+      <button id="btnToggleBot" class="btn btn-green" onclick="toggleBot()" disabled>Iniciar Bot</button>
       <div style="font-size: 0.7rem; color: var(--text-muted); font-family: monospace;">
         Cooldown: WIN=12s · LOSS=65s (1s) | WIN=15s · LOSS=130s (2s)
       </div>
@@ -428,8 +428,8 @@
         <option value="D">Serie D</option>
       </select>
       <div style="display: flex; gap: 10px; margin-top: auto;">
-        <button id="btnManualCall" class="btn btn-green" style="flex:1; padding: 14px;" onclick="ejecutarManual('CALL')" disabled>▲ CALL</button>
-        <button id="btnManualPut" class="btn btn-red" style="flex:1; padding: 14px;" onclick="ejecutarManual('PUT')" disabled>▼ PUT</button>
+        <button id="btnManualCall" class="btn btn-green" style="flex:1; padding: 14px;" onclick="ejecutarManual('CALL')" disabled>CALL</button>
+        <button id="btnManualPut" class="btn btn-red" style="flex:1; padding: 14px;" onclick="ejecutarManual('PUT')" disabled>PUT</button>
       </div>
     </div>
   </div>
@@ -439,7 +439,7 @@
       <h3 style="font-size: 0.9rem; color:#fff;">Diario de Operaciones</h3>
       <div style="display: flex; gap: 8px; align-items: center;">
         <span id="lblTradeCount" style="font-size: 0.72rem; color: var(--text-muted);">0 operaciones</span>
-        <button class="btn" style="padding: 4px 10px; font-size: 0.72rem;" onclick="exportCSV()">💾 CSV</button>
+        <button class="btn" style="padding: 4px 10px; font-size: 0.72rem;" onclick="exportCSV()">CSV</button>
       </div>
     </div>
     <div class="table-scroll">
@@ -517,6 +517,7 @@ var state = {
   proposalSentAt: 0, lastLatency: 0,
   trades: [], openTrades: { A: null, B: null, C: null, D: null },
   nextTradeId: 1,
+  pendingBalanceUpdate: null,
   tg: { enabled: true, token: '', chatId: '' },
   series: {
     A: crearSerie('1HZ75V'),
@@ -998,11 +999,42 @@ function handleMessage(data) {
   }
   if (data.msg_type === 'ping') return;
 
+  // =========================================================
+  // BALANCE — ÚNICA FUENTE DE VERDAD (Deriv)
+  // =========================================================
   if (data.msg_type === 'balance' && data.balance) {
-    state.balance = parseFloat(data.balance.balance);
+    var nuevoBalance = parseFloat(data.balance.balance);
+    state.balance = nuevoBalance;
     state.currency = data.balance.currency || 'USD';
-    if (state.initialBalance === 0) { state.initialBalance = state.balance; state.peakBalance = state.balance; }
-    document.getElementById('kpiBalance').innerText = '$' + state.balance.toFixed(2);
+
+    if (state.initialBalance === 0) {
+      state.initialBalance = nuevoBalance;
+      state.peakBalance = nuevoBalance;
+    }
+
+    if (nuevoBalance > state.peakBalance) state.peakBalance = nuevoBalance;
+    var dd = ((state.peakBalance - nuevoBalance) / state.peakBalance) * 100;
+    if (dd > state.maxDD) state.maxDD = dd;
+
+    document.getElementById('kpiBalance').innerText = '$' + nuevoBalance.toFixed(2);
+
+    // Actualizar el trade pendiente con el balance real post-liquidación
+    if (state.pendingBalanceUpdate) {
+      state.pendingBalanceUpdate.balanceAfter = nuevoBalance;
+      updateJournalRow(state.pendingBalanceUpdate, state.pendingBalanceUpdate.status);
+      state.pendingBalanceUpdate = null;
+    }
+
+    // Diagnóstico opcional: comparar balance real vs esperado
+    var balanceEsperado = state.initialBalance + state.netPnL;
+    var diff = nuevoBalance - balanceEsperado;
+    if (Math.abs(diff) > 0.05) {
+      console.warn('[BALANCE DIAG] Real: $' + nuevoBalance.toFixed(4) +
+                   ' | Esperado: $' + balanceEsperado.toFixed(4) +
+                   ' | Diff: $' + diff.toFixed(4));
+    }
+
+    actualizarMetricas();
   }
 
   if (data.msg_type === 'history' && data.history) {
@@ -1257,22 +1289,30 @@ function liquidarContrato(poc) {
     }
   }
 
+  // PnL de sesión (suma de profits) — el balance real lo maneja Deriv
   state.netPnL += profit;
-  state.balance += profit;
-  trade.balanceAfter = state.balance;
-  if (state.balance > state.peakBalance) state.peakBalance = state.balance;
-  var dd = ((state.peakBalance - state.balance) / state.peakBalance) * 100;
-  if (dd > state.maxDD) state.maxDD = dd;
 
-  document.getElementById('kpiBalance').innerText = '$' + state.balance.toFixed(2);
+  // ⚠️ NO se modifica state.balance aquí. Deriv lo envía por WebSocket.
+  // El próximo mensaje 'balance' actualizará el balance, el peak, el DD
+  // y el balanceAfter de este trade.
+  trade.balanceAfter = null;
+  state.pendingBalanceUpdate = trade;
+
   actualizarMetricas();
   updateJournalRow(trade, trade.status);
   showTradeBadge(serie, trade.type, 'close');
 
+  // Solicitar balance actualizado a Deriv (por si el mensaje subscribe llegó tarde)
+  setTimeout(function() {
+    if (state.ws && state.isConnected) {
+      state.ws.send(JSON.stringify({ balance: 1 }));
+    }
+  }, 200);
+
   var icono = isWin ? 'OK' : 'X';
   var signo = profit >= 0 ? '+' : '';
   var wr = (state.wins + state.losses) > 0 ? ((state.wins / (state.wins + state.losses)) * 100).toFixed(1) : '0.0';
-  sendTelegram(icono + ' *Operación Cerrada*\nSerie: ' + serie + ' (' + s.symbol + ')\nTipo: ' + trade.type + '\nResultado: ' + signo + '$' + profit.toFixed(2) + '\nStake: $' + trade.stake.toFixed(2) + '\nBalance: $' + state.balance.toFixed(2) + ' ' + state.currency + '\nPnL Sesión: ' + (state.netPnL >= 0 ? '+' : '') + '$' + state.netPnL.toFixed(2) + '\nWin Rate: ' + wr + '% (' + state.wins + 'W/' + state.losses + 'L)');
+  sendTelegram(icono + ' *Operación Cerrada*\nSerie: ' + serie + ' (' + s.symbol + ')\nTipo: ' + trade.type + '\nResultado: ' + signo + '$' + profit.toFixed(2) + '\nStake: $' + trade.stake.toFixed(2) + '\nPnL Sesión: ' + (state.netPnL >= 0 ? '+' : '') + '$' + state.netPnL.toFixed(2) + '\nWin Rate: ' + wr + '% (' + state.wins + 'W/' + state.losses + 'L)');
 }
 
 // ==========================================================
@@ -1445,7 +1485,7 @@ function toggleBot() {
     btn.innerText = 'Iniciar Bot';
     btn.className = 'btn btn-green';
     log('BOT PAUSADO', '#f0883e');
-    sendTelegram('*Bot PAUSADO*\nBalance: $' + state.balance.toFixed(2) + '\nPnL Sesión: ' + (state.netPnL >= 0 ? '+' : '') + '$' + state.netPnL.toFixed(2));
+    sendTelegram('*Bot PAUSADO*\nPnL Sesión: ' + (state.netPnL >= 0 ? '+' : '') + '$' + state.netPnL.toFixed(2));
   }
 }
 
@@ -1472,6 +1512,7 @@ function desconectar(manual) {
     state.indepLevel[k] = 1;
   });
   state.sharedLevel = 1;
+  state.pendingBalanceUpdate = null;
   if (manual) {
     document.getElementById('btnConnect').style.display = 'inline-block';
     document.getElementById('btnDisconnect').style.display = 'none';
