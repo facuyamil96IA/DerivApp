@@ -12,7 +12,7 @@
       --red: #f85149; --red-glow: rgba(248, 81, 73, 0.25);
       --amber: #f0883e; --cyan: #38bdf8;
       --text: #f1f5f9; --text-muted: #94a3b8;
-      --v75: #38bdf8; --v100: #f59e0b; --v25: #a78bfa; --v50: #34d399;
+      --vA: #38bdf8; --vB: #f59e0b; --vC: #a78bfa; --vD: #34d399;
       --tg: #229ed9;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -63,10 +63,10 @@
     .chart-panel.d { border-color: rgba(52, 211, 153, 0.5); }
     .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 6px; }
     .chart-title { font-size: 0.75rem; font-weight: 700; }
-    .chart-title.a { color: var(--v75); }
-    .chart-title.b { color: var(--v100); }
-    .chart-title.c { color: var(--v25); }
-    .chart-title.d { color: var(--v50); }
+    .chart-title.a { color: var(--vA); }
+    .chart-title.b { color: var(--vB); }
+    .chart-title.c { color: var(--vC); }
+    .chart-title.d { color: var(--vD); }
     .chart-price { font-family: monospace; font-size: 0.85rem; font-weight: 700; }
     .chart-sub { font-size: 0.65rem; color: var(--text-muted); font-family: monospace; }
     canvas { display: block; width: 100%; height: 130px; background: #020617; border-radius: 4px; }
@@ -91,8 +91,6 @@
     .config-extra { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-top: 6px; }
     .account-info { font-size: 0.72rem; color: var(--text-muted); font-family: monospace; margin-top: 4px; }
     .tg-info { font-size: 0.72rem; color: var(--text-muted); font-family: monospace; margin-top: 4px; }
-    .slot-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-    .slot-row input[type="checkbox"] { width: auto; }
   </style>
 </head>
 <body>
@@ -107,7 +105,7 @@
         <p style="font-size: 0.72rem; color: var(--text-muted);">Volatility 25–100 · Hasta 4 series simultáneas · Streak Filter · Telegram</p>
       </div>
     </div>
-    <div style="display: flex; gap: 8px; align-items: center;">
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
       <div class="status-pill">
         <span id="statusDot" class="dot"></span>
         <span id="wsStatus">Desconectado</span>
@@ -121,7 +119,6 @@
     </div>
   </header>
 
-  <!-- AUTENTICACIÓN DERIV -->
   <div class="auth-card">
     <div class="auth-row">
       <div>
@@ -149,7 +146,6 @@
     <div id="accountInfo" class="account-info"></div>
   </div>
 
-  <!-- CONFIGURACIÓN TELEGRAM -->
   <div class="tg-card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
       <h3 style="font-size: 0.9rem; color: var(--tg);">📱 Notificaciones Telegram</h3>
@@ -195,8 +191,8 @@
     </div>
     <div class="kpi-card">
       <div class="kpi-lbl">Gestión</div>
-      <div id="kpiLevel" class="kpi-val">L1 / L1</div>
-      <div id="kpiNextStake" class="kpi-sub">Próximo: $0.35 / $0.35</div>
+      <div id="kpiLevel" class="kpi-val">A:L1 / B:L1 / C:L1 / D:L1</div>
+      <div id="kpiNextStake" class="kpi-sub">Próx: $0.35 / $0.35 / $0.35 / $0.35</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-lbl">Max Drawdown</div>
@@ -230,7 +226,6 @@
     </div>
   </div>
 
-  <!-- 4 GRÁFICOS -->
   <div class="quad-charts">
     <div class="chart-panel a" id="panelA">
       <div class="chart-header">
@@ -365,7 +360,7 @@
     <div class="box-card">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <h3 style="font-size: 0.9rem; color:#fff;">Motor Estadístico Multi-Serie</h3>
-        <span style="font-size: 0.72rem; color: var(--text-muted);">Umbral: |Z| ≥ 3.2σ · Duración: 1 tick</span>
+        <span style="font-size: 0.72rem; color: var(--text-muted);">Umbral: |Z| mayor o igual a 3.2σ · Duración: 1 tick</span>
       </div>
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
         <div>
@@ -470,19 +465,18 @@
 // ==========================================================
 // CONFIG
 // ==========================================================
-const API_BASE = 'https://api.derivws.com';
-const ENDPOINT_ACCOUNTS = `${API_BASE}/trading/v1/options/accounts`;
-const ENDPOINT_OTP = `${API_BASE}/trading/v1/options/accounts/{accountId}/otp`;
-const MULT_MARTINGALE = 2.14;
-const PING_INTERVAL = 30000;
-const WATCHDOG_INTERVAL = 3000;
-const WATCHDOG_TIMEOUT = 6000;
-const MAX_POINTS = 120;
-const RECONNECT_BASE_DELAY = 1000;
-const RECONNECT_MAX_DELAY = 30000;
+var API_BASE = 'https://api.derivws.com';
+var ENDPOINT_ACCOUNTS = API_BASE + '/trading/v1/options/accounts';
+var ENDPOINT_OTP = API_BASE + '/trading/v1/options/accounts/{accountId}/otp';
+var MULT_MARTINGALE = 2.14;
+var PING_INTERVAL = 30000;
+var WATCHDOG_INTERVAL = 3000;
+var WATCHDOG_TIMEOUT = 6000;
+var MAX_POINTS = 120;
+var RECONNECT_BASE_DELAY = 1000;
+var RECONNECT_MAX_DELAY = 30000;
 
-// Cooldown asimétrico (segundos)
-const COOLDOWN = {
+var COOLDOWN = {
   '1HZ15V': { win: 12, loss: 65, interval: 1 },
   '1HZ25V': { win: 12, loss: 65, interval: 1 },
   '1HZ30V': { win: 12, loss: 65, interval: 1 },
@@ -490,16 +484,13 @@ const COOLDOWN = {
   '1HZ75V': { win: 12, loss: 65, interval: 1 },
   '1HZ90V': { win: 12, loss: 65, interval: 1 },
   '1HZ100V': { win: 12, loss: 65, interval: 1 },
-  'R_25':  { win: 15, loss: 130, interval: 2 },
-  'R_50':  { win: 15, loss: 130, interval: 2 },
-  'R_75':  { win: 15, loss: 130, interval: 2 },
+  'R_25': { win: 15, loss: 130, interval: 2 },
+  'R_50': { win: 15, loss: 130, interval: 2 },
+  'R_75': { win: 15, loss: 130, interval: 2 },
   'R_100': { win: 15, loss: 130, interval: 2 }
 };
 
-// ==========================================================
-// ESTADO — 4 SERIES
-// ==========================================================
-const SERIES_KEYS = ['A', 'B', 'C', 'D'];
+var SERIES_KEYS = ['A', 'B', 'C', 'D'];
 
 function crearSerie(symbol) {
   return {
@@ -510,7 +501,7 @@ function crearSerie(symbol) {
   };
 }
 
-const state = {
+var state = {
   token: '', appId: '', accountId: '', accountType: 'demo',
   ws: null, isConnected: false, botRunning: false,
   balance: 0, currency: 'USD',
@@ -535,10 +526,9 @@ const state = {
   }
 };
 
-// Marcar series habilitadas según los checkboxes
 function syncEnabledSeries() {
-  SERIES_KEYS.forEach(k => {
-    const cb = document.getElementById('enable' + k);
+  SERIES_KEYS.forEach(function(k) {
+    var cb = document.getElementById('enable' + k);
     state.series[k].enabled = cb ? cb.checked : false;
   });
 }
@@ -546,18 +536,20 @@ function syncEnabledSeries() {
 // ==========================================================
 // LOG / UI
 // ==========================================================
-function log(msg, color = '#38bdf8') {
-  const el = document.getElementById('console');
-  const t = new Date().toTimeString().split(' ')[0];
-  el.innerHTML += `<div style="color:${color}">[${t}] ${msg}</div>`;
+function log(msg, color) {
+  color = color || '#38bdf8';
+  var el = document.getElementById('console');
+  var t = new Date().toTimeString().split(' ')[0];
+  el.innerHTML += '<div style="color:' + color + '">[' + t + '] ' + msg + '</div>';
   el.scrollTop = el.scrollHeight;
 }
 function setDot(cls, txt) {
-  document.getElementById('statusDot').className = `dot ${cls}`;
+  document.getElementById('statusDot').className = 'dot ' + cls;
   document.getElementById('wsStatus').innerText = txt;
 }
-function setTgStatus(txt, color = 'var(--text-muted)') {
-  const el = document.getElementById('lblTgStatus');
+function setTgStatus(txt, color) {
+  color = color || 'var(--text-muted)';
+  var el = document.getElementById('lblTgStatus');
   el.innerText = txt;
   el.style.color = color;
 }
@@ -566,37 +558,37 @@ function setTgStatus(txt, color = 'var(--text-muted)') {
 // TELEGRAM
 // ==========================================================
 function guardarTelegramConfig() {
-  const token = document.getElementById('cfgTgToken').value.trim();
-  const chatId = document.getElementById('cfgTgChatId').value.trim();
-  const enabled = document.getElementById('cfgTgEnabled').checked;
-  state.tg = { enabled, token, chatId };
+  var token = document.getElementById('cfgTgToken').value.trim();
+  var chatId = document.getElementById('cfgTgChatId').value.trim();
+  var enabled = document.getElementById('cfgTgEnabled').checked;
+  state.tg = { enabled: enabled, token: token, chatId: chatId };
   try { localStorage.setItem('deriv_tg_config', JSON.stringify(state.tg)); } catch (e) {}
   if (token && chatId) {
-    setTgStatus('Configurado ✓', 'var(--green)');
-    log('✔ Telegram configurado y guardado.', '#2ea043');
-    document.getElementById('tgInfo').innerText = '✅ Configuración guardada. Puedes probar el envío.';
+    setTgStatus('Configurado OK', 'var(--green)');
+    log('Telegram configurado y guardado.', '#2ea043');
+    document.getElementById('tgInfo').innerText = 'Configuración guardada. Puedes probar el envío.';
     document.getElementById('tgInfo').style.color = 'var(--green)';
   } else {
     setTgStatus('Incompleto', 'var(--amber)');
-    log('⚠ Telegram incompleto. Faltan token o chat ID.', '#f0883e');
+    log('Telegram incompleto. Faltan token o chat ID.', '#f0883e');
   }
 }
 function cargarTelegramConfig() {
   try {
-    const raw = localStorage.getItem('deriv_tg_config');
+    var raw = localStorage.getItem('deriv_tg_config');
     if (!raw) return;
-    const cfg = JSON.parse(raw);
+    var cfg = JSON.parse(raw);
     if (cfg.token) document.getElementById('cfgTgToken').value = cfg.token;
     if (cfg.chatId) document.getElementById('cfgTgChatId').value = cfg.chatId;
     if (typeof cfg.enabled === 'boolean') document.getElementById('cfgTgEnabled').checked = cfg.enabled;
-    state.tg = { enabled: cfg.enabled ?? true, token: cfg.token || '', chatId: cfg.chatId || '' };
-    if (cfg.token && cfg.chatId) setTgStatus('Configurado ✓', 'var(--green)');
+    state.tg = { enabled: cfg.enabled === undefined ? true : cfg.enabled, token: cfg.token || '', chatId: cfg.chatId || '' };
+    if (cfg.token && cfg.chatId) setTgStatus('Configurado OK', 'var(--green)');
   } catch (e) {}
 }
 async function sendTelegram(msg) {
   if (!state.tg.enabled) return;
   if (!state.tg.token || !state.tg.chatId) return;
-  const url = `https://api.telegram.org/bot${state.tg.token}/sendMessage`;
+  var url = 'https://api.telegram.org/bot' + state.tg.token + '/sendMessage';
   try {
     await fetch(url, {
       method: 'POST',
@@ -606,78 +598,78 @@ async function sendTelegram(msg) {
   } catch (err) { console.warn('Telegram error:', err); }
 }
 async function detectarChatId() {
-  const token = document.getElementById('cfgTgToken').value.trim();
+  var token = document.getElementById('cfgTgToken').value.trim();
   if (!token) { alert('Primero ingresa el Bot Token.'); return; }
-  const info = document.getElementById('tgInfo');
-  info.innerText = '🔎 Consultando actualizaciones al bot...';
+  var info = document.getElementById('tgInfo');
+  info.innerText = 'Consultando actualizaciones al bot...';
   info.style.color = 'var(--amber)';
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates`);
-    const data = await res.json();
+    var res = await fetch('https://api.telegram.org/bot' + token + '/getUpdates');
+    var data = await res.json();
     if (!data.ok) {
-      info.innerText = `❌ Error: ${data.description || 'Token inválido'}`;
+      info.innerText = 'Error: ' + (data.description || 'Token inválido');
       info.style.color = 'var(--red)';
       return;
     }
     if (!data.result || data.result.length === 0) {
-      info.innerText = '⚠ No hay mensajes. Envía un mensaje a tu bot desde Telegram y vuelve a intentar.';
+      info.innerText = 'No hay mensajes. Envía un mensaje a tu bot desde Telegram y vuelve a intentar.';
       info.style.color = 'var(--amber)';
       return;
     }
-    let chatId = null;
-    for (let i = data.result.length - 1; i >= 0; i--) {
-      const upd = data.result[i];
+    var chatId = null;
+    for (var i = data.result.length - 1; i >= 0; i--) {
+      var upd = data.result[i];
       if (upd.message && upd.message.chat && upd.message.chat.id) { chatId = upd.message.chat.id; break; }
       if (upd.edited_message && upd.edited_message.chat && upd.edited_message.chat.id) { chatId = upd.edited_message.chat.id; break; }
     }
     if (chatId) {
       document.getElementById('cfgTgChatId').value = chatId;
-      info.innerText = `✅ Chat ID detectado: ${chatId}. Guarda la configuración.`;
+      info.innerText = 'Chat ID detectado: ' + chatId + '. Guarda la configuración.';
       info.style.color = 'var(--green)';
-      log(`✔ Chat ID detectado: ${chatId}`, '#2ea043');
+      log('Chat ID detectado: ' + chatId, '#2ea043');
     } else {
-      info.innerText = '⚠ No se encontró un chat con ID. Envía /start a tu bot desde Telegram.';
+      info.innerText = 'No se encontró un chat con ID. Envía /start a tu bot desde Telegram.';
       info.style.color = 'var(--amber)';
     }
   } catch (e) {
-    info.innerText = `❌ Error de red: ${e.message}`;
+    info.innerText = 'Error de red: ' + e.message;
     info.style.color = 'var(--red)';
   }
 }
 async function probarTelegram() {
-  const token = document.getElementById('cfgTgToken').value.trim();
-  const chatId = document.getElementById('cfgTgChatId').value.trim();
-  const info = document.getElementById('tgInfo');
+  var token = document.getElementById('cfgTgToken').value.trim();
+  var chatId = document.getElementById('cfgTgChatId').value.trim();
+  var info = document.getElementById('tgInfo');
   if (!token || !chatId) {
-    info.innerText = '⚠ Faltan token o chat ID para probar.';
+    info.innerText = 'Faltan token o chat ID para probar.';
     info.style.color = 'var(--amber)';
     return;
   }
-  info.innerText = '📤 Enviando mensaje de prueba...';
+  info.innerText = 'Enviando mensaje de prueba...';
   info.style.color = 'var(--amber)';
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    var res = await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text: '✅ *Test desde la app de trading Deriv*\n\nSi ves este mensaje, las notificaciones están funcionando correctamente.', parse_mode: 'Markdown' })
+      body: JSON.stringify({ chat_id: chatId, text: '*Test desde la app de trading Deriv*\n\nSi ves este mensaje, las notificaciones están funcionando correctamente.', parse_mode: 'Markdown' })
     });
-    const data = await res.json();
+    var data = await res.json();
     if (data.ok) {
-      info.innerText = '✅ Mensaje de prueba enviado. Revisa Telegram.';
+      info.innerText = 'Mensaje de prueba enviado. Revisa Telegram.';
       info.style.color = 'var(--green)';
-      log('✔ Mensaje de prueba enviado a Telegram.', '#2ea043');
+      log('Mensaje de prueba enviado a Telegram.', '#2ea043');
     } else {
-      info.innerText = `❌ Error: ${data.description || 'Desconocido'}`;
+      info.innerText = 'Error: ' + (data.description || 'Desconocido');
       info.style.color = 'var(--red)';
     }
   } catch (e) {
-    info.innerText = `❌ Error de red: ${e.message}`;
+    info.innerText = 'Error de red: ' + e.message;
     info.style.color = 'var(--red)';
   }
 }
 
 // ==========================================================
-// HELPERS DE GESTIÓN
+// HELPERS DE GESTION
 // ==========================================================
 function getConcurrencyMode() { return document.getElementById('cfgConcurrency').value; }
 function getManagementMode() { return document.getElementById('cfgMartingale').value; }
@@ -700,12 +692,13 @@ function setCurrentLevel(serie, level) {
   else state.indepLevel[serie] = level;
 }
 function puedeDisparar(serie) {
-  const s = state.series[serie];
+  var s = state.series[serie];
   if (!s.enabled) return false;
   if (Date.now() < s.cooldownUntil) return false;
   if (state.openTrades[serie]) return false;
   if (getConcurrencyMode() === 'exclusive') {
-    for (const k of SERIES_KEYS) {
+    for (var i = 0; i < SERIES_KEYS.length; i++) {
+      var k = SERIES_KEYS[i];
       if (k !== serie && state.openTrades[k]) return false;
     }
   }
@@ -716,21 +709,21 @@ function puedeDisparar(serie) {
 // STREAK FILTER
 // ==========================================================
 function validateMicrostructureStreak(returnsBuffer, signalDirection) {
-  const STREAK_LOOKBACK = 3;
+  var STREAK_LOOKBACK = 3;
   if (!returnsBuffer || returnsBuffer.length < STREAK_LOOKBACK + 1) return true;
-  const len = returnsBuffer.length;
-  const rPrev1 = returnsBuffer[len - 2];
-  const rPrev2 = returnsBuffer[len - 3];
-  const rPrev3 = returnsBuffer[len - 4];
+  var len = returnsBuffer.length;
+  var rPrev1 = returnsBuffer[len - 2];
+  var rPrev2 = returnsBuffer[len - 3];
+  var rPrev3 = returnsBuffer[len - 4];
   if (signalDirection === 'PUT') {
     if (rPrev1 > 0 && rPrev2 > 0 && rPrev3 > 0) {
-      log(`🚫 [STREAK] PUT bloqueado — racha alcista previa`, '#f0883e');
+      log('STREAK: PUT bloqueado por racha alcista previa', '#f0883e');
       return false;
     }
   }
   if (signalDirection === 'CALL') {
     if (rPrev1 < 0 && rPrev2 < 0 && rPrev3 < 0) {
-      log(`🚫 [STREAK] CALL bloqueado — racha bajista previa`, '#f0883e');
+      log('STREAK: CALL bloqueado por racha bajista previa', '#f0883e');
       return false;
     }
   }
@@ -738,141 +731,181 @@ function validateMicrostructureStreak(returnsBuffer, signalDirection) {
 }
 
 // ==========================================================
-// BÚSQUEDA DE CUENTAS
+// BUSQUEDA DE CUENTAS
 // ==========================================================
 async function buscarCuentas() {
-  const token = document.getElementById('cfgToken').value.trim();
-  const appId = document.getElementById('cfgAppId').value.trim();
+  var token = document.getElementById('cfgToken').value.trim();
+  var appId = document.getElementById('cfgAppId').value.trim();
+
   if (!token) { alert('Introduce tu token PAT.'); return; }
   if (!appId) { alert('El Deriv-App-ID es obligatorio.'); return; }
-  const btn = document.getElementById('btnFetchAccounts');
+
+  var btn = document.getElementById('btnFetchAccounts');
   btn.disabled = true;
-  btn.innerText = '⏳ Buscando...';
+  btn.innerText = 'Buscando...';
   document.getElementById('accountInfo').innerText = 'Consultando cuentas en Deriv...';
-  log('🔍 Consultando cuentas disponibles...', '#f0883e');
+  document.getElementById('accountInfo').style.color = 'var(--text-muted)';
+  log('Consultando cuentas disponibles...', '#f0883e');
+
   try {
-    const res = await fetch(ENDPOINT_ACCOUNTS, {
+    var res = await fetch(ENDPOINT_ACCOUNTS, {
       method: 'GET',
-      headers: { 'Authorization': `Bearer ${token}`, 'Deriv-App-ID': appId, 'Content-Type': 'application/json' }
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Deriv-App-ID': appId,
+        'Content-Type': 'application/json'
+      }
     });
-    const data = await res.json();
-    if (!res.ok) {
-      const errMsg = data?.error?.message || data?.message || `Error HTTP ${res.status}`;
-      log(`❌ Error al buscar cuentas: ${errMsg}`, '#f87171');
-      document.getElementById('accountInfo').innerText = `❌ ${errMsg}`;
+
+    log('HTTP Status: ' + res.status, res.ok ? '#2ea043' : '#f87171');
+
+    var rawText = await res.text();
+    log('Respuesta: ' + rawText.substring(0, 300), '#94a3b8');
+
+    var data;
+    try { data = JSON.parse(rawText); }
+    catch (parseErr) {
+      document.getElementById('accountInfo').innerText = 'Respuesta no es JSON: ' + rawText.substring(0, 150);
       document.getElementById('accountInfo').style.color = 'var(--red)';
       return;
     }
-    const accounts = Array.isArray(data) ? data : (data.data || data.accounts || []);
+
+    if (!res.ok) {
+      var errMsg = (data && data.error && data.error.message) || data.message || ('Error HTTP ' + res.status);
+      log('Error al buscar cuentas: ' + errMsg, '#f87171');
+      document.getElementById('accountInfo').innerText = errMsg;
+      document.getElementById('accountInfo').style.color = 'var(--red)';
+      return;
+    }
+
+    var accounts = Array.isArray(data) ? data : (data.data || data.accounts || []);
+    log('Cuentas recibidas: ' + accounts.length, '#38bdf8');
+
     if (accounts.length === 0) {
-      log('⚠ No se encontraron cuentas asociadas a este token.', '#f0883e');
-      document.getElementById('accountInfo').innerText = '⚠ No se encontraron cuentas.';
+      log('No se encontraron cuentas asociadas a este token.', '#f0883e');
+      document.getElementById('accountInfo').innerText = 'No se encontraron cuentas.';
       document.getElementById('accountInfo').style.color = 'var(--amber)';
       return;
     }
-    const sel = document.getElementById('selAccount');
+
+    var sel = document.getElementById('selAccount');
     sel.innerHTML = '';
-    accounts.forEach(acc => {
-      const accId = acc.account_id || acc.loginid || acc.id;
-      const accType = (acc.account_type || acc.type || 'demo').toLowerCase();
-      const currency = acc.currency || 'USD';
-      const balance = acc.balance != null ? ` · $${parseFloat(acc.balance).toFixed(2)}` : '';
-      const typeLabel = accType.includes('demo') ? 'Demo' : 'Real';
-      const opt = document.createElement('option');
-      opt.value = `${accId}|${accType.includes('demo') ? 'demo' : 'real'}`;
-      opt.textContent = `${accId} (${typeLabel}${balance} ${currency})`;
+    accounts.forEach(function(acc) {
+      var accId = acc.account_id || acc.loginid || acc.id;
+      var accType = (acc.account_type || acc.type || 'demo').toLowerCase();
+      var currency = acc.currency || 'USD';
+      var balance = acc.balance != null ? ' · $' + parseFloat(acc.balance).toFixed(2) : '';
+      var typeLabel = accType.indexOf('demo') !== -1 ? 'Demo' : 'Real';
+      var opt = document.createElement('option');
+      opt.value = accId + '|' + (accType.indexOf('demo') !== -1 ? 'demo' : 'real');
+      opt.textContent = accId + ' (' + typeLabel + balance + ' ' + currency + ')';
       sel.appendChild(opt);
     });
+
     sel.disabled = false;
     document.getElementById('btnConnect').disabled = false;
-    document.getElementById('accountInfo').innerText = `✅ ${accounts.length} cuenta(s) encontrada(s). Selecciona una y conecta.`;
+    document.getElementById('accountInfo').innerText = accounts.length + ' cuenta(s) encontrada(s). Selecciona una y conecta.';
     document.getElementById('accountInfo').style.color = 'var(--green)';
-    log(`✔ ${accounts.length} cuenta(s) disponible(s).`, '#2ea043');
+    log(accounts.length + ' cuenta(s) disponible(s).', '#2ea043');
+
   } catch (e) {
-    log(`❌ Error de red: ${e.message}`, '#f87171');
-    document.getElementById('accountInfo').innerText = `❌ Error de red: ${e.message}`;
+    log('Error de red: ' + e.message, '#f87171');
+    document.getElementById('accountInfo').innerText = 'Error de red: ' + e.message;
     document.getElementById('accountInfo').style.color = 'var(--red)';
   } finally {
     btn.disabled = false;
-    btn.innerText = '🔍 Buscar cuentas';
+    btn.innerText = 'Buscar cuentas';
   }
 }
 
 // ==========================================================
-// CONEXIÓN
+// CONEXION
 // ==========================================================
 async function conectarCuentaOptions() {
   state.token = document.getElementById('cfgToken').value.trim();
   state.appId = document.getElementById('cfgAppId').value.trim();
-  const selVal = document.getElementById('selAccount').value;
+  var selVal = document.getElementById('selAccount').value;
   if (!selVal) { alert('Primero busca cuentas y selecciona una.'); return; }
-  const [accId, accType] = selVal.split('|');
-  state.accountId = accId; state.accountType = accType;
+
+  var parts = selVal.split('|');
+  state.accountId = parts[0];
+  state.accountType = parts[1];
+
   if (!state.token) { alert('Introduce tu token PAT.'); return; }
   if (!state.appId) { alert('El Deriv-App-ID es obligatorio.'); return; }
+
   if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
   setDot('busy', 'Obteniendo OTP...');
-  log(`Solicitando OTP para ${state.accountId} (${state.accountType.toUpperCase()})...`, '#f0883e');
+  log('Solicitando OTP para ' + state.accountId + ' (' + state.accountType.toUpperCase() + ')...', '#f0883e');
+
   try {
-    const otpUrl = ENDPOINT_OTP.replace('{accountId}', state.accountId);
-    const res = await fetch(otpUrl, {
+    var otpUrl = ENDPOINT_OTP.replace('{accountId}', state.accountId);
+    var res = await fetch(otpUrl, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${state.token}`, 'Deriv-App-ID': state.appId, 'Content-Type': 'application/json' }
+      headers: {
+        'Authorization': 'Bearer ' + state.token,
+        'Deriv-App-ID': state.appId,
+        'Content-Type': 'application/json'
+      }
     });
-    const data = await res.json();
+    var data = await res.json();
     if (!res.ok) {
-      log(`❌ Fallo OTP: ${data?.error?.message || data?.message || res.status}`, '#f87171');
+      var errMsg = (data && data.error && data.error.message) || data.message || res.status;
+      log('Fallo OTP: ' + errMsg, '#f87171');
       setDot('err', 'Fallo OTP');
       return;
     }
-    const wsUrl = data.data?.url || data.url;
-    if (!wsUrl) { log('❌ Sin URL de WebSocket.', '#f87171'); setDot('err', 'URL no encontrada'); return; }
-    log('✔ OTP obtenido. Conectando WS...', '#2ea043');
+    var wsUrl = (data.data && data.data.url) || data.url;
+    if (!wsUrl) { log('Sin URL de WebSocket.', '#f87171'); setDot('err', 'URL no encontrada'); return; }
+    log('OTP obtenido. Conectando WS...', '#2ea043');
     abrirWebSocketOptions(wsUrl);
   } catch (e) {
-    log(`❌ Error de red: ${e.message}`, '#f87171'); setDot('err', 'Error de red');
+    log('Error de red: ' + e.message, '#f87171');
+    setDot('err', 'Error de red');
   }
 }
 
 function abrirWebSocketOptions(url) {
   try { state.ws = new WebSocket(url); }
-  catch (err) { log(`Error WS: ${err.message}`, '#f87171'); setDot('err', 'Fallo'); return; }
+  catch (err) { log('Error WS: ' + err.message, '#f87171'); setDot('err', 'Fallo'); return; }
 
-  state.ws.onopen = () => {
+  state.ws.onopen = function() {
     state.isConnected = true;
     state.reconnectAttempts = 0;
-    setDot('live', `${state.accountType.toUpperCase()} Conectada`);
-    document.getElementById('lblActiveAccount').innerText = `${state.accountId} [${state.accountType.toUpperCase()}]`;
+    setDot('live', state.accountType.toUpperCase() + ' Conectada');
+    document.getElementById('lblActiveAccount').innerText = state.accountId + ' [' + state.accountType.toUpperCase() + ']';
     document.getElementById('lblActiveAccount').style.color = state.accountType === 'demo' ? 'var(--cyan)' : 'var(--red)';
     document.getElementById('btnConnect').style.display = 'none';
     document.getElementById('btnDisconnect').style.display = 'inline-block';
     document.getElementById('btnManualCall').disabled = false;
     document.getElementById('btnManualPut').disabled = false;
     document.getElementById('btnToggleBot').disabled = false;
-    log(`✔ WebSocket establecido en ${state.accountId}.`, '#2ea043');
-    sendTelegram(`🟢 *Conexión establecida*\nCuenta: \`${state.accountId}\` (${state.accountType.toUpperCase()})\nHora: ${new Date().toLocaleString()}`);
+    log('WebSocket establecido en ' + state.accountId + '.', '#2ea043');
+    sendTelegram('*Conexión establecida*\nCuenta: `' + state.accountId + '` (' + state.accountType.toUpperCase() + ')\nHora: ' + new Date().toLocaleString());
+
     if (state.pingTimer) clearInterval(state.pingTimer);
-    state.pingTimer = setInterval(() => {
+    state.pingTimer = setInterval(function() {
       if (state.ws && state.ws.readyState === WebSocket.OPEN) {
         state.ws.send(JSON.stringify({ ping: 1 }));
       }
     }, PING_INTERVAL);
+
     iniciarWatchdogTicks();
     iniciarActualizadorCooldown();
     solicitarBalance();
-    SERIES_KEYS.forEach(k => {
+    SERIES_KEYS.forEach(function(k) {
       if (state.series[k].enabled) solicitarTicks(k);
     });
   };
 
-  state.ws.onmessage = (evt) => {
+  state.ws.onmessage = function(evt) {
     try { handleMessage(JSON.parse(evt.data)); }
     catch (e) { console.error('Parse:', e); }
   };
-  state.ws.onerror = () => { log('Fallo de red WS.', '#f87171'); setDot('err', 'Error'); };
-  state.ws.onclose = () => {
+  state.ws.onerror = function() { log('Fallo de red WS.', '#f87171'); setDot('err', 'Error'); };
+  state.ws.onclose = function() {
     log('Conexión finalizada. Programando reconexión...', '#f0883e');
-    sendTelegram(`🔴 *Conexión perdida*\nProgramando reconexión automática...`);
+    sendTelegram('*Conexión perdida*\nProgramando reconexión automática...');
     desconectar(false);
     programarReconexion();
   };
@@ -881,10 +914,10 @@ function abrirWebSocketOptions(url) {
 function programarReconexion() {
   if (state.reconnectTimer) return;
   if (!state.botRunning) return;
-  const delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, state.reconnectAttempts), RECONNECT_MAX_DELAY);
+  var delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, state.reconnectAttempts), RECONNECT_MAX_DELAY);
   state.reconnectAttempts++;
-  log(`🔄 Reconectando en ${(delay/1000).toFixed(1)}s (intento ${state.reconnectAttempts})...`, '#f0883e');
-  state.reconnectTimer = setTimeout(async () => {
+  log('Reconectando en ' + (delay / 1000).toFixed(1) + 's (intento ' + state.reconnectAttempts + ')...', '#f0883e');
+  state.reconnectTimer = setTimeout(async function() {
     state.reconnectTimer = null;
     try { await conectarCuentaOptions(); }
     catch (e) { programarReconexion(); }
@@ -897,9 +930,10 @@ function solicitarBalance() {
 
 function solicitarTicks(serie) {
   if (!state.ws || !state.isConnected) return;
-  const s = state.series[serie];
+  var s = state.series[serie];
   if (!s || !s.symbol) return;
-  log(`Suscribiendo Serie ${serie} → ${s.symbol}`, serie === 'A' ? '#38bdf8' : serie === 'B' ? '#f59e0b' : serie === 'C' ? '#a78bfa' : '#34d399');
+  var color = serie === 'A' ? '#38bdf8' : serie === 'B' ? '#f59e0b' : serie === 'C' ? '#a78bfa' : '#34d399';
+  log('Suscribiendo Serie ' + serie + ' -> ' + s.symbol, color);
   state.lastTickAt[serie] = Date.now();
   state.ws.send(JSON.stringify({
     ticks_history: s.symbol, adjust_start_time: 1, count: 65, end: 'latest', style: 'ticks', subscribe: 1
@@ -908,17 +942,17 @@ function solicitarTicks(serie) {
 
 function reSuscribirSerie(serie) {
   if (!state.ws || !state.isConnected) return;
-  log(`🔄 [WATCHDOG] Re-suscribiendo Serie ${serie}...`, '#f0883e');
+  log('WATCHDOG: Re-suscribiendo Serie ' + serie + '...', '#f0883e');
   state.ws.send(JSON.stringify({ forget_all: 'ticks' }));
-  setTimeout(() => solicitarTicks(serie), 800);
+  setTimeout(function() { solicitarTicks(serie); }, 800);
 }
 
 function iniciarWatchdogTicks() {
   if (state.watchdogTimer) clearInterval(state.watchdogTimer);
-  state.watchdogTimer = setInterval(() => {
+  state.watchdogTimer = setInterval(function() {
     if (!state.isConnected || !state.ws || state.ws.readyState !== WebSocket.OPEN) return;
-    const now = Date.now();
-    SERIES_KEYS.forEach(k => {
+    var now = Date.now();
+    SERIES_KEYS.forEach(function(k) {
       if (state.series[k].enabled && (now - state.lastTickAt[k] > WATCHDOG_TIMEOUT)) {
         reSuscribirSerie(k);
       }
@@ -927,23 +961,23 @@ function iniciarWatchdogTicks() {
 }
 
 function iniciarActualizadorCooldown() {
-  setInterval(() => {
-    SERIES_KEYS.forEach(serie => {
-      const s = state.series[serie];
-      const remaining = s.cooldownUntil - Date.now();
-      const elVal = document.getElementById('kpiCd' + serie);
-      const elInfo = document.getElementById('kpiCd' + serie + 'Info');
+  setInterval(function() {
+    SERIES_KEYS.forEach(function(serie) {
+      var s = state.series[serie];
+      var remaining = s.cooldownUntil - Date.now();
+      var elVal = document.getElementById('kpiCd' + serie);
+      var elInfo = document.getElementById('kpiCd' + serie + 'Info');
       if (!elVal) return;
       if (remaining > 0) {
-        elVal.innerText = `${(remaining / 1000).toFixed(0)}s`;
+        elVal.innerText = (remaining / 1000).toFixed(0) + 's';
         elVal.className = 'kpi-val txt-amber';
-        const cfg = COOLDOWN[s.symbol] || { win: 12, loss: 65 };
-        const total = s.lastTradeStatus === 'WIN' ? cfg.win : cfg.loss;
-        elInfo.innerText = `Última: ${s.lastTradeStatus === 'WIN' ? '✅ WIN' : '❌ LOSS'} · /${total}s`;
+        var cfg = COOLDOWN[s.symbol] || { win: 12, loss: 65 };
+        var total = s.lastTradeStatus === 'WIN' ? cfg.win : cfg.loss;
+        elInfo.innerText = 'Última: ' + (s.lastTradeStatus === 'WIN' ? 'WIN' : 'LOSS') + ' · /' + total + 's';
       } else {
         elVal.innerText = 'Listo';
         elVal.className = 'kpi-val txt-green';
-        elInfo.innerText = s.lastTradeStatus ? `Última: ${s.lastTradeStatus === 'WIN' ? '✅ WIN' : '❌ LOSS'}` : 'Sin restricción';
+        elInfo.innerText = s.lastTradeStatus ? 'Última: ' + (s.lastTradeStatus === 'WIN' ? 'WIN' : 'LOSS') : 'Sin restricción';
       }
     });
   }, 200);
@@ -954,10 +988,10 @@ function iniciarActualizadorCooldown() {
 // ==========================================================
 function handleMessage(data) {
   if (data.error) {
-    if (data.error.message && data.error.message.includes('already subscribed')) return;
-    log(`[API ERROR]: ${data.error.message}`, '#f87171');
-    SERIES_KEYS.forEach(k => {
-      const t = state.openTrades[k];
+    if (data.error.message && data.error.message.indexOf('already subscribed') !== -1) return;
+    log('[API ERROR]: ' + data.error.message, '#f87171');
+    SERIES_KEYS.forEach(function(k) {
+      var t = state.openTrades[k];
       if (t && t.status === 'PENDING_BUY') { state.openTrades[k] = null; updateJournalRow(t, 'ERROR'); }
     });
     return;
@@ -968,39 +1002,48 @@ function handleMessage(data) {
     state.balance = parseFloat(data.balance.balance);
     state.currency = data.balance.currency || 'USD';
     if (state.initialBalance === 0) { state.initialBalance = state.balance; state.peakBalance = state.balance; }
-    document.getElementById('kpiBalance').innerText = `$${state.balance.toFixed(2)}`;
+    document.getElementById('kpiBalance').innerText = '$' + state.balance.toFixed(2);
   }
 
   if (data.msg_type === 'history' && data.history) {
-    const sym = data.echo_req?.ticks_history || data.history?.symbol || '';
-    const serie = SERIES_KEYS.find(k => state.series[k].symbol === sym);
+    var sym = (data.echo_req && data.echo_req.ticks_history) || (data.history && data.history.symbol) || '';
+    var serie = null;
+    for (var i = 0; i < SERIES_KEYS.length; i++) {
+      if (state.series[SERIES_KEYS[i]].symbol === sym) { serie = SERIES_KEYS[i]; break; }
+    }
     if (!serie) return;
     state.ticksSubscribed[serie] = true;
     state.lastTickAt[serie] = Date.now();
-    const s = state.series[serie];
+    var s = state.series[serie];
     s.prices = []; s.epochs = []; s.returns = []; s.displayPrices = [];
-    const times = data.history.times, prices = data.history.prices;
-    for (let i = 0; i < times.length; i++) procesarTick(serie, parseFloat(prices[i]), parseInt(times[i], 10), false);
-    log(`✔ Serie ${serie} calibrada con ${times.length} ticks.`, serie === 'A' ? '#38bdf8' : serie === 'B' ? '#f59e0b' : serie === 'C' ? '#a78bfa' : '#34d399');
+    var times = data.history.times, prices = data.history.prices;
+    for (var j = 0; j < times.length; j++) {
+      procesarTick(serie, parseFloat(prices[j]), parseInt(times[j], 10), false);
+    }
+    var color = serie === 'A' ? '#38bdf8' : serie === 'B' ? '#f59e0b' : serie === 'C' ? '#a78bfa' : '#34d399';
+    log('Serie ' + serie + ' calibrada con ' + times.length + ' ticks.', color);
     return;
   }
 
   if (data.msg_type === 'tick' && data.tick) {
-    const sym = data.tick.symbol;
-    const serie = SERIES_KEYS.find(k => state.series[k].symbol === sym);
-    if (!serie) return;
-    state.ticksSubscribed[serie] = true;
-    state.lastTickAt[serie] = Date.now();
-    procesarTick(serie, parseFloat(data.tick.quote), parseInt(data.tick.epoch, 10), true);
+    var sym2 = data.tick.symbol;
+    var serie2 = null;
+    for (var i2 = 0; i2 < SERIES_KEYS.length; i2++) {
+      if (state.series[SERIES_KEYS[i2]].symbol === sym2) { serie2 = SERIES_KEYS[i2]; break; }
+    }
+    if (!serie2) return;
+    state.ticksSubscribed[serie2] = true;
+    state.lastTickAt[serie2] = Date.now();
+    procesarTick(serie2, parseFloat(data.tick.quote), parseInt(data.tick.epoch, 10), true);
     return;
   }
 
   if (data.msg_type === 'proposal' && data.proposal) {
-    const id = data.proposal.id, ask = data.proposal.ask_price;
+    var id = data.proposal.id, ask = data.proposal.ask_price;
     if (!id || !ask) {
-      log('❌ Propuesta inválida.', '#f87171');
-      SERIES_KEYS.forEach(k => {
-        const t = state.openTrades[k];
+      log('Propuesta inválida.', '#f87171');
+      SERIES_KEYS.forEach(function(k) {
+        var t = state.openTrades[k];
         if (t && t.status === 'PENDING_BUY') { state.openTrades[k] = null; updateJournalRow(t, 'ERROR'); }
       });
       return;
@@ -1010,21 +1053,19 @@ function handleMessage(data) {
   }
 
   if (data.msg_type === 'buy' && data.buy) {
-    const cid = data.buy.contract_id;
-    const totalLatency = performance.now() - state.proposalSentAt;
+    var cid = data.buy.contract_id;
+    var totalLatency = performance.now() - state.proposalSentAt;
     state.lastLatency = totalLatency;
-    document.getElementById('kpiLatency').innerText = `${totalLatency.toFixed(0)} ms`;
-    SERIES_KEYS.forEach(k => {
-      const t = state.openTrades[k];
+    document.getElementById('kpiLatency').innerText = totalLatency.toFixed(0) + ' ms';
+    SERIES_KEYS.forEach(function(k) {
+      var t = state.openTrades[k];
       if (t && t.status === 'PENDING_BUY') {
         t.contractId = cid; t.latency = totalLatency; t.status = 'OPEN';
         updateJournalRow(t, 'OPEN'); showTradeBadge(k, t.type, 'open');
-        sendTelegram(
-          `🚀 *Operación Abierta*\nSerie: ${t.serie} (${t.symbol})\nTipo: ${t.type}\nStake: $${t.stake.toFixed(2)}\nNivel: L${t.level}\nZ-Score: ${t.zScore.toFixed(2)}σ\nID: \`${cid}\``
-        );
+        sendTelegram('*Operación Abierta*\nSerie: ' + t.serie + ' (' + t.symbol + ')\nTipo: ' + t.type + '\nStake: $' + t.stake.toFixed(2) + '\nNivel: L' + t.level + '\nZ-Score: ' + t.zScore.toFixed(2) + 's\nID: `' + cid + '`');
       }
     });
-    log(`🚀 #${cid} confirmado (${totalLatency.toFixed(0)}ms)`, '#2ea043');
+    log('#' + cid + ' confirmado (' + totalLatency.toFixed(0) + 'ms)', '#2ea043');
     state.ws.send(JSON.stringify({ proposal_open_contract: 1, contract_id: cid, subscribe: 1 }));
     return;
   }
@@ -1038,13 +1079,13 @@ function handleMessage(data) {
 // PROCESAMIENTO DE TICK
 // ==========================================================
 function procesarTick(serie, price, epoch, permitirDisparo) {
-  const s = state.series[serie];
+  var s = state.series[serie];
   if (!s) return;
   s.prices.push(price); s.epochs.push(epoch);
   if (s.prices.length > 70) { s.prices.shift(); s.epochs.shift(); }
   if (s.prices.length >= 2) {
-    const prev = s.prices[s.prices.length - 2];
-    const ret = Math.log(price / prev);
+    var prev = s.prices[s.prices.length - 2];
+    var ret = Math.log(price / prev);
     s.returns.push(ret);
     if (s.returns.length > 60) s.returns.shift();
   }
@@ -1053,37 +1094,39 @@ function procesarTick(serie, price, epoch, permitirDisparo) {
   if (s.displayPrices.length > MAX_POINTS) s.displayPrices.shift();
   dibujarChart(serie);
 
-  const elP = document.getElementById('price' + serie);
-  const elD = document.getElementById('delta' + serie);
+  var elP = document.getElementById('price' + serie);
+  var elD = document.getElementById('delta' + serie);
   if (elP) elP.innerText = price.toFixed(2);
   if (elD && s.prices.length >= 2) {
-    const prev = s.prices[s.prices.length - 2];
-    const dPct = ((price - prev) / prev) * 100;
-    elD.innerText = `Δ ${dPct >= 0 ? '+' : ''}${dPct.toFixed(3)}%`;
+    var prev2 = s.prices[s.prices.length - 2];
+    var dPct = ((price - prev2) / prev2) * 100;
+    elD.innerText = 'Δ ' + (dPct >= 0 ? '+' : '') + dPct.toFixed(3) + '%';
     elD.className = dPct >= 0 ? 'chart-sub txt-green' : 'chart-sub txt-red';
   }
 
   if (s.returns.length >= 20) {
-    const z = calcularZScore(s);
-    const elZ = document.getElementById('z' + serie);
-    const elBar = document.getElementById('zbar' + serie);
-    if (elZ) elZ.innerText = `Z: ${z >= 0 ? '+' : ''}${z.toFixed(2)}σ · Buffer: ${s.returns.length}/60`;
+    var z = calcularZScore(s);
+    var elZ = document.getElementById('z' + serie);
+    var elBar = document.getElementById('zbar' + serie);
+    if (elZ) elZ.innerText = 'Z: ' + (z >= 0 ? '+' : '') + z.toFixed(2) + 's · Buffer: ' + s.returns.length + '/60';
     if (elBar) {
-      const clamped = Math.max(-4, Math.min(4, z));
-      elBar.style.left = `${((clamped + 4) / 8) * 100}%`;
+      var clamped = Math.max(-4, Math.min(4, z));
+      elBar.style.left = ((clamped + 4) / 8 * 100) + '%';
     }
     if (permitirDisparo && state.botRunning) evaluarGatillo(serie, z, epoch);
   }
 }
 
 function calcularZScore(s) {
-  const n = s.returns.length;
+  var n = s.returns.length;
   if (n < 20) return 0;
-  const last = s.returns[n - 1];
-  const mean = s.returns.reduce((a, b) => a + b, 0) / n;
-  let varSum = 0;
-  for (let i = 0; i < n; i++) varSum += Math.pow(s.returns[i] - mean, 2);
-  const std = Math.sqrt(varSum / (n - 1));
+  var last = s.returns[n - 1];
+  var sum = 0;
+  for (var i = 0; i < n; i++) sum += s.returns[i];
+  var mean = sum / n;
+  var varSum = 0;
+  for (var j = 0; j < n; j++) varSum += Math.pow(s.returns[j] - mean, 2);
+  var std = Math.sqrt(varSum / (n - 1));
   if (std <= 1e-12) return 0;
   return (last - mean) / std;
 }
@@ -1092,59 +1135,62 @@ function calcularZScore(s) {
 // GATILLO
 // ==========================================================
 function evaluarGatillo(serie, z, epoch) {
-  const mode = document.getElementById('cfgMode').value;
+  var mode = document.getElementById('cfgMode').value;
   if (mode !== 'multi' && mode !== serie) return;
-  const isPut = z >= 3.2, isCall = z <= -3.2;
+  var isPut = z >= 3.2;
+  var isCall = z <= -3.2;
   if (!isPut && !isCall) return;
   if (!puedeDisparar(serie)) return;
 
-  const direction = isCall ? 'CALL' : 'PUT';
+  var direction = isCall ? 'CALL' : 'PUT';
 
-  const streakFilterEnabled = document.getElementById('cfgStreakFilter')?.checked ?? true;
+  var streakFilterEnabled = document.getElementById('cfgStreakFilter') ? document.getElementById('cfgStreakFilter').checked : true;
   if (streakFilterEnabled) {
-    const s = state.series[serie];
+    var s = state.series[serie];
     if (!validateMicrostructureStreak(s.returns, direction)) return;
   }
 
-  const tp = parseFloat(document.getElementById('cfgTP').value) || 5.0;
-  const sl = parseFloat(document.getElementById('cfgSL').value) || 5.0;
+  var tp = parseFloat(document.getElementById('cfgTP').value) || 5.0;
+  var sl = parseFloat(document.getElementById('cfgSL').value) || 5.0;
   if (state.netPnL >= tp || state.netPnL <= -sl) {
     log('TP/SL alcanzado. Bot en pausa.', '#f0883e'); toggleBot(); return;
   }
 
-  const level = getCurrentLevel(serie);
-  const stake = stakeForLevel(level, getBaseStake());
+  var level = getCurrentLevel(serie);
+  var stake = stakeForLevel(level, getBaseStake());
   triggerTrade(serie, direction, z, epoch, state.series[serie].lastPrice, level, stake);
 }
 
 function ejecutarManual(direction) {
   if (!state.isConnected) { alert('Conecta primero.'); return; }
-  const serie = document.getElementById('cfgManualAsset').value;
-  if (state.openTrades[serie]) { log(`Serie ${serie} ya tiene una operación abierta.`, '#f0883e'); return; }
+  var serie = document.getElementById('cfgManualAsset').value;
+  if (state.openTrades[serie]) { log('Serie ' + serie + ' ya tiene una operación abierta.', '#f0883e'); return; }
   if (getConcurrencyMode() === 'exclusive') {
-    for (const k of SERIES_KEYS) {
-      if (k !== serie && state.openTrades[k]) { log(`Modo exclusivo: otra serie tiene operación abierta.`, '#f0883e'); return; }
+    for (var i = 0; i < SERIES_KEYS.length; i++) {
+      var k = SERIES_KEYS[i];
+      if (k !== serie && state.openTrades[k]) { log('Modo exclusivo: otra serie tiene operación abierta.', '#f0883e'); return; }
     }
   }
-  const level = getCurrentLevel(serie);
-  const stake = parseFloat(document.getElementById('cfgBaseStake').value) || 0.35;
+  var level = getCurrentLevel(serie);
+  var stake = parseFloat(document.getElementById('cfgBaseStake').value) || 0.35;
   triggerTrade(serie, direction, 0, Math.floor(Date.now() / 1000), state.series[serie].lastPrice, level, stake, true);
 }
 
 // ==========================================================
 // TRIGGER TRADE
 // ==========================================================
-function triggerTrade(serie, direction, z, epoch, entryPrice, level, stake, manual = false) {
+function triggerTrade(serie, direction, z, epoch, entryPrice, level, stake, manual) {
+  manual = manual || false;
   if (getManagementMode() === 'shared') {
-    console.warn('[ARCH] Martingala compartida detectada. Forzando modo independiente.');
+    console.warn('Martingala compartida detectada. Forzando modo independiente.');
     document.getElementById('cfgMartingale').value = 'independent';
   }
-  const s = state.series[serie];
-  const trade = {
-    id: state.nextTradeId++, serie, symbol: s.symbol, type: direction,
-    level, stake, zScore: z, entryPrice, exitPrice: null, profit: null,
+  var s = state.series[serie];
+  var trade = {
+    id: state.nextTradeId++, serie: serie, symbol: s.symbol, type: direction,
+    level: level, stake: stake, zScore: z, entryPrice: entryPrice, exitPrice: null, profit: null,
     status: 'PENDING_BUY', startTime: Date.now(), purchaseTime: null,
-    exitTime: null, contractId: null, latency: 0, manual, balanceAfter: null
+    exitTime: null, contractId: null, latency: 0, manual: manual, balanceAfter: null
   };
   state.openTrades[serie] = trade;
   state.trades.push(trade);
@@ -1153,25 +1199,27 @@ function triggerTrade(serie, direction, z, epoch, entryPrice, level, stake, manu
     proposal: 1, amount: stake, basis: 'stake', contract_type: direction,
     currency: state.currency, duration: 1, duration_unit: 't', underlying_symbol: s.symbol
   }));
-  log(`⚡ Serie ${serie} (${s.symbol}): Z=${z.toFixed(2)}σ → ${direction} $${stake.toFixed(2)} [L${level}]${manual ? ' (manual)' : ''}`, serie === 'A' ? '#38bdf8' : serie === 'B' ? '#f59e0b' : serie === 'C' ? '#a78bfa' : '#34d399');
+  var color = serie === 'A' ? '#38bdf8' : serie === 'B' ? '#f59e0b' : serie === 'C' ? '#a78bfa' : '#34d399';
+  log('Serie ' + serie + ' (' + s.symbol + '): Z=' + z.toFixed(2) + 's -> ' + direction + ' $' + stake.toFixed(2) + ' [L' + level + ']' + (manual ? ' (manual)' : ''), color);
   appendJournalRow(trade);
 }
 
 // ==========================================================
-// LIQUIDACIÓN
+// LIQUIDACION
 // ==========================================================
 function liquidarContrato(poc) {
-  const cid = poc.contract_id;
-  let serie = null, trade = null;
-  for (const k of SERIES_KEYS) {
-    const t = state.openTrades[k];
+  var cid = poc.contract_id;
+  var serie = null, trade = null;
+  for (var i = 0; i < SERIES_KEYS.length; i++) {
+    var k = SERIES_KEYS[i];
+    var t = state.openTrades[k];
     if (t && t.contractId === cid) { serie = k; trade = t; break; }
   }
-  if (!trade) { log(`⚠ Liquidación para contrato desconocido ${cid}`, '#f0883e'); return; }
+  if (!trade) { log('Liquidación para contrato desconocido ' + cid, '#f0883e'); return; }
 
-  const s = state.series[serie];
-  const profit = parseFloat(poc.profit);
-  const isWin = profit > 0;
+  var s = state.series[serie];
+  var profit = parseFloat(poc.profit);
+  var isWin = profit > 0;
 
   trade.exitPrice = parseFloat(poc.exit_tick || poc.exit_tick_display_value || s.lastPrice) || s.lastPrice;
   trade.profit = profit;
@@ -1180,32 +1228,32 @@ function liquidarContrato(poc) {
   trade.purchaseTime = poc.purchase_time ? poc.purchase_time * 1000 : trade.startTime;
   state.openTrades[serie] = null;
 
-  const cfg = COOLDOWN[s.symbol] || { win: 12, loss: 65 };
-  const cdSeconds = isWin ? cfg.win : cfg.loss;
+  var cfg = COOLDOWN[s.symbol] || { win: 12, loss: 65 };
+  var cdSeconds = isWin ? cfg.win : cfg.loss;
   s.lastTradeStatus = isWin ? 'WIN' : 'LOSS';
   s.cooldownUntil = Date.now() + cdSeconds * 1000;
 
   if (isWin) {
     state.wins++; state.grossProfit += profit;
-    log(`✅ GANADA Serie ${serie} #${cid} +$${profit.toFixed(2)} · Cooldown ${cdSeconds}s`, '#2ea043');
+    log('GANADA Serie ' + serie + ' #' + cid + ' +$' + profit.toFixed(2) + ' · Cooldown ' + cdSeconds + 's', '#2ea043');
   } else {
     state.losses++; state.grossLoss += Math.abs(profit);
-    log(`❌ PERDIDA Serie ${serie} #${cid} -$${Math.abs(profit).toFixed(2)} · Cooldown ${cdSeconds}s`, '#f87171');
+    log('PERDIDA Serie ' + serie + ' #' + cid + ' -$' + Math.abs(profit).toFixed(2) + ' · Cooldown ' + cdSeconds + 's', '#f87171');
   }
 
-  const mgmt = getManagementMode();
+  var mgmt = getManagementMode();
   if (mgmt === 'flat') {
     // Stake plano: no se modifica ningún nivel
   } else if (isWin) {
     setCurrentLevel(serie, 1);
   } else {
-    const currentLvl = trade.level;
+    var currentLvl = trade.level;
     if (currentLvl < 3) {
       setCurrentLevel(serie, currentLvl + 1);
-      log(`[MARTINGALA ${mgmt === 'shared' ? 'COMPARTIDA' : 'INDEPENDIENTE'}] Serie ${serie} → Nivel ${currentLvl + 1}`, '#f0883e');
+      log('[MARTINGALA ' + (mgmt === 'shared' ? 'COMPARTIDA' : 'INDEPENDIENTE') + '] Serie ' + serie + ' -> Nivel ' + (currentLvl + 1), '#f0883e');
     } else {
       setCurrentLevel(serie, 1);
-      log(`[MARTINGALA] Cap L3 alcanzado en Serie ${serie}. Reset a Nivel 1.`, '#f87171');
+      log('[MARTINGALA] Cap L3 alcanzado en Serie ' + serie + '. Reset a Nivel 1.', '#f87171');
     }
   }
 
@@ -1213,149 +1261,151 @@ function liquidarContrato(poc) {
   state.balance += profit;
   trade.balanceAfter = state.balance;
   if (state.balance > state.peakBalance) state.peakBalance = state.balance;
-  const dd = ((state.peakBalance - state.balance) / state.peakBalance) * 100;
+  var dd = ((state.peakBalance - state.balance) / state.peakBalance) * 100;
   if (dd > state.maxDD) state.maxDD = dd;
 
-  document.getElementById('kpiBalance').innerText = `$${state.balance.toFixed(2)}`;
+  document.getElementById('kpiBalance').innerText = '$' + state.balance.toFixed(2);
   actualizarMetricas();
   updateJournalRow(trade, trade.status);
   showTradeBadge(serie, trade.type, 'close');
 
-  const icono = isWin ? '✅' : '❌';
-  const signo = profit >= 0 ? '+' : '';
-  const wr = (state.wins + state.losses) > 0 ? ((state.wins / (state.wins + state.losses)) * 100).toFixed(1) : '0.0';
-  sendTelegram(
-    `${icono} *Operación Cerrada*\nSerie: ${serie} (${s.symbol})\nTipo: ${trade.type}\nResultado: ${signo}$${profit.toFixed(2)}\nStake: $${trade.stake.toFixed(2)}\nBalance: $${state.balance.toFixed(2)} ${state.currency}\nPnL Sesión: ${state.netPnL >= 0 ? '+' : ''}$${state.netPnL.toFixed(2)}\nWin Rate: ${wr}% (${state.wins}W/${state.losses}L)`
-  );
+  var icono = isWin ? 'OK' : 'X';
+  var signo = profit >= 0 ? '+' : '';
+  var wr = (state.wins + state.losses) > 0 ? ((state.wins / (state.wins + state.losses)) * 100).toFixed(1) : '0.0';
+  sendTelegram(icono + ' *Operación Cerrada*\nSerie: ' + serie + ' (' + s.symbol + ')\nTipo: ' + trade.type + '\nResultado: ' + signo + '$' + profit.toFixed(2) + '\nStake: $' + trade.stake.toFixed(2) + '\nBalance: $' + state.balance.toFixed(2) + ' ' + state.currency + '\nPnL Sesión: ' + (state.netPnL >= 0 ? '+' : '') + '$' + state.netPnL.toFixed(2) + '\nWin Rate: ' + wr + '% (' + state.wins + 'W/' + state.losses + 'L)');
 }
 
 // ==========================================================
 // DIARIO
 // ==========================================================
 function appendJournalRow(trade) {
-  const tbody = document.getElementById('tblTradesBody');
+  var tbody = document.getElementById('tblTradesBody');
   if (tbody.children.length === 1 && tbody.children[0].children.length === 1) tbody.innerHTML = '';
-  const tr = document.createElement('tr');
-  tr.id = `trade-${trade.id}`;
-  const colorSerie = trade.serie === 'A' ? 'var(--v75)' : trade.serie === 'B' ? 'var(--v100)' : trade.serie === 'C' ? 'var(--v25)' : 'var(--v50)';
-  const typePill = trade.type === 'CALL' ? '<span class="pill pill-rise">▲ CALL</span>' : '<span class="pill pill-fall">▼ PUT</span>';
-  tr.innerHTML = `
-    <td>#${trade.id}</td><td>${new Date(trade.startTime).toTimeString().split(' ')[0]}</td>
-    <td style="color:${colorSerie}; font-weight:700;">${trade.serie}</td>
-    <td>${typePill}</td><td>L${trade.level}</td><td>${trade.zScore.toFixed(2)}σ</td>
-    <td>$${trade.stake.toFixed(2)}</td>
-    <td class="entry-cell">--</td><td class="exit-cell">--</td>
-    <td class="profit-cell">--</td><td class="balance-cell">--</td>
-    <td class="lat-cell">--</td>
-    <td class="status-cell"><span class="pill pill-open">ENVIANDO</span></td>
-  `;
+  var tr = document.createElement('tr');
+  tr.id = 'trade-' + trade.id;
+  var colorSerie = trade.serie === 'A' ? 'var(--vA)' : trade.serie === 'B' ? 'var(--vB)' : trade.serie === 'C' ? 'var(--vC)' : 'var(--vD)';
+  var typePill = trade.type === 'CALL' ? '<span class="pill pill-rise">CALL</span>' : '<span class="pill pill-fall">PUT</span>';
+  tr.innerHTML =
+    '<td>#' + trade.id + '</td>' +
+    '<td>' + new Date(trade.startTime).toTimeString().split(' ')[0] + '</td>' +
+    '<td style="color:' + colorSerie + '; font-weight:700;">' + trade.serie + '</td>' +
+    '<td>' + typePill + '</td>' +
+    '<td>L' + trade.level + '</td>' +
+    '<td>' + trade.zScore.toFixed(2) + 's</td>' +
+    '<td>$' + trade.stake.toFixed(2) + '</td>' +
+    '<td class="entry-cell">--</td>' +
+    '<td class="exit-cell">--</td>' +
+    '<td class="profit-cell">--</td>' +
+    '<td class="balance-cell">--</td>' +
+    '<td class="lat-cell">--</td>' +
+    '<td class="status-cell"><span class="pill pill-open">ENVIANDO</span></td>';
   tbody.insertBefore(tr, tbody.firstChild);
 }
 
 function updateJournalRow(trade, status) {
-  const tr = document.getElementById(`trade-${trade.id}`);
+  var tr = document.getElementById('trade-' + trade.id);
   if (!tr) return;
   tr.querySelector('.entry-cell').innerText = trade.entryPrice.toFixed(2);
   if (status === 'OPEN' || status === 'PENDING_BUY') {
     tr.querySelector('.status-cell').innerHTML = '<span class="pill pill-open">EN CURSO</span>';
-    tr.querySelector('.lat-cell').innerText = trade.latency ? `${trade.latency.toFixed(0)} ms` : '--';
+    tr.querySelector('.lat-cell').innerText = trade.latency ? trade.latency.toFixed(0) + ' ms' : '--';
     return;
   }
   if (status === 'ERROR') {
     tr.querySelector('.status-cell').innerHTML = '<span class="pill pill-loss">ERROR</span>';
     return;
   }
-  const isWin = status === 'WIN';
+  var isWin = status === 'WIN';
   tr.querySelector('.exit-cell').innerText = trade.exitPrice != null ? trade.exitPrice.toFixed(2) : '--';
-  const profitCell = tr.querySelector('.profit-cell');
-  profitCell.innerText = trade.profit != null ? `${trade.profit >= 0 ? '+' : ''}$${trade.profit.toFixed(2)}` : '--';
+  var profitCell = tr.querySelector('.profit-cell');
+  profitCell.innerText = trade.profit != null ? (trade.profit >= 0 ? '+' : '') + '$' + trade.profit.toFixed(2) : '--';
   profitCell.style.color = isWin ? 'var(--green)' : 'var(--red)';
   profitCell.style.fontWeight = 'bold';
-  tr.querySelector('.balance-cell').innerText = trade.balanceAfter != null ? `$${trade.balanceAfter.toFixed(2)}` : '--';
-  tr.querySelector('.lat-cell').innerText = trade.latency ? `${trade.latency.toFixed(0)} ms` : '--';
+  tr.querySelector('.balance-cell').innerText = trade.balanceAfter != null ? '$' + trade.balanceAfter.toFixed(2) : '--';
+  tr.querySelector('.lat-cell').innerText = trade.latency ? trade.latency.toFixed(0) + ' ms' : '--';
   tr.querySelector('.status-cell').innerHTML = isWin
-    ? '<span class="pill pill-win">✅ GANADA</span>'
-    : '<span class="pill pill-loss">❌ PERDIDA</span>';
+    ? '<span class="pill pill-win">GANADA</span>'
+    : '<span class="pill pill-loss">PERDIDA</span>';
 }
 
 function showTradeBadge(serie, type, phase) {
-  const badge = document.getElementById('badge' + serie);
+  var badge = document.getElementById('badge' + serie);
   if (!badge) return;
   if (phase === 'close') { badge.classList.remove('show'); return; }
-  badge.innerText = type === 'CALL' ? '▲ CALL' : '▼ PUT';
-  badge.className = `trade-badge ${type === 'CALL' ? 'rise' : 'fall'} show`;
+  badge.innerText = type === 'CALL' ? 'CALL' : 'PUT';
+  badge.className = 'trade-badge ' + (type === 'CALL' ? 'rise' : 'fall') + ' show';
 }
 
 function actualizarMetricas() {
-  const total = state.wins + state.losses;
-  const wr = total > 0 ? ((state.wins / total) * 100).toFixed(1) : '0.0';
-  document.getElementById('kpiWinRate').innerText = `${wr}%`;
-  document.getElementById('kpiWinLoss').innerText = `${state.wins}W / ${state.losses}L (${total})`;
+  var total = state.wins + state.losses;
+  var wr = total > 0 ? ((state.wins / total) * 100).toFixed(1) : '0.0';
+  document.getElementById('kpiWinRate').innerText = wr + '%';
+  document.getElementById('kpiWinLoss').innerText = state.wins + 'W / ' + state.losses + 'L (' + total + ')';
 
-  const pnlEl = document.getElementById('kpiPnL');
-  pnlEl.innerText = `PnL Sesión: ${state.netPnL >= 0 ? '+' : ''}$${state.netPnL.toFixed(2)}`;
+  var pnlEl = document.getElementById('kpiPnL');
+  pnlEl.innerText = 'PnL Sesión: ' + (state.netPnL >= 0 ? '+' : '') + '$' + state.netPnL.toFixed(2);
   pnlEl.className = state.netPnL >= 0 ? 'kpi-sub txt-green' : 'kpi-sub txt-red';
 
-  const base = getBaseStake();
-  const mgmt = getManagementMode();
+  var base = getBaseStake();
+  var mgmt = getManagementMode();
   if (mgmt === 'flat') {
     document.getElementById('kpiLevel').innerText = 'Plano';
-    document.getElementById('kpiNextStake').innerText = `Próximo: $${base.toFixed(2)}`;
+    document.getElementById('kpiNextStake').innerText = 'Próximo: $' + base.toFixed(2);
   } else if (mgmt === 'shared') {
-    const lvl = state.sharedLevel;
-    document.getElementById('kpiLevel').innerText = `L${lvl} (compartida)`;
-    document.getElementById('kpiNextStake').innerText = `Próximo: $${stakeForLevel(lvl, base).toFixed(2)}`;
+    var lvl = state.sharedLevel;
+    document.getElementById('kpiLevel').innerText = 'L' + lvl + ' (compartida)';
+    document.getElementById('kpiNextStake').innerText = 'Próximo: $' + stakeForLevel(lvl, base).toFixed(2);
   } else {
-    const lA = state.indepLevel.A, lB = state.indepLevel.B, lC = state.indepLevel.C, lD = state.indepLevel.D;
-    document.getElementById('kpiLevel').innerText = `A:L${lA} / B:L${lB} / C:L${lC} / D:L${lD}`;
-    document.getElementById('kpiNextStake').innerText = `Próx: $${stakeForLevel(lA, base).toFixed(2)} / $${stakeForLevel(lB, base).toFixed(2)} / $${stakeForLevel(lC, base).toFixed(2)} / $${stakeForLevel(lD, base).toFixed(2)}`;
+    var lA = state.indepLevel.A, lB = state.indepLevel.B, lC = state.indepLevel.C, lD = state.indepLevel.D;
+    document.getElementById('kpiLevel').innerText = 'A:L' + lA + ' / B:L' + lB + ' / C:L' + lC + ' / D:L' + lD;
+    document.getElementById('kpiNextStake').innerText = 'Próx: $' + stakeForLevel(lA, base).toFixed(2) + ' / $' + stakeForLevel(lB, base).toFixed(2) + ' / $' + stakeForLevel(lC, base).toFixed(2) + ' / $' + stakeForLevel(lD, base).toFixed(2);
   }
 
-  document.getElementById('kpiDD').innerText = `${state.maxDD.toFixed(2)}%`;
-  const pf = state.grossLoss > 0 ? (state.grossProfit / state.grossLoss).toFixed(2) : (state.grossProfit > 0 ? '∞' : '0.00');
-  document.getElementById('kpiPF').innerText = `Profit Factor: ${pf}`;
-  document.getElementById('lblTradeCount').innerText = `${total} operaciones`;
+  document.getElementById('kpiDD').innerText = state.maxDD.toFixed(2) + '%';
+  var pf = state.grossLoss > 0 ? (state.grossProfit / state.grossLoss).toFixed(2) : (state.grossProfit > 0 ? 'inf' : '0.00');
+  document.getElementById('kpiPF').innerText = 'Profit Factor: ' + pf;
+  document.getElementById('lblTradeCount').innerText = total + ' operaciones';
 }
 
 // ==========================================================
-// GRÁFICOS
+// GRAFICOS
 // ==========================================================
-const ctxMap = {
+var ctxMap = {
   A: document.getElementById('chartA').getContext('2d'),
   B: document.getElementById('chartB').getContext('2d'),
   C: document.getElementById('chartC').getContext('2d'),
   D: document.getElementById('chartD').getContext('2d')
 };
-const colorMap = { A: '#38bdf8', B: '#f59e0b', C: '#a78bfa', D: '#34d399' };
+var colorMap = { A: '#38bdf8', B: '#f59e0b', C: '#a78bfa', D: '#34d399' };
 
 function dibujarChart(serie) {
-  const canvas = document.getElementById('chart' + serie);
-  const ctx = ctxMap[serie];
-  const color = colorMap[serie];
+  var canvas = document.getElementById('chart' + serie);
+  var ctx = ctxMap[serie];
+  var color = colorMap[serie];
   if (!canvas || !ctx) return;
-  const W = canvas.width, H = canvas.height;
+  var W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#020617'; ctx.fillRect(0, 0, W, H);
   ctx.strokeStyle = 'rgba(48,54,61,0.5)'; ctx.lineWidth = 1;
-  for (let i = 1; i < 4; i++) { const y = (H / 4) * i; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
-  for (let i = 1; i < 6; i++) { const x = (W / 6) * i; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-  const data = state.series[serie].displayPrices;
+  for (var i = 1; i < 4; i++) { var y = (H / 4) * i; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  for (var j = 1; j < 6; j++) { var x = (W / 6) * j; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  var data = state.series[serie].displayPrices;
   if (data.length < 2) return;
-  const minP = Math.min(...data), maxP = Math.max(...data);
-  const range = Math.max(maxP - minP, 1e-9);
+  var minP = Math.min.apply(null, data), maxP = Math.max.apply(null, data);
+  var range = Math.max(maxP - minP, 1e-9);
   ctx.strokeStyle = 'rgba(100,116,139,0.4)';
   ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke();
   ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.beginPath();
-  const stepX = W / (MAX_POINTS - 1);
-  const offsetX = W - (data.length - 1) * stepX;
-  for (let i = 0; i < data.length; i++) {
-    const x = offsetX + i * stepX;
-    const y = H - ((data[i] - minP) / range) * (H * 0.85) - H * 0.075;
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  var stepX = W / (MAX_POINTS - 1);
+  var offsetX = W - (data.length - 1) * stepX;
+  for (var k = 0; k < data.length; k++) {
+    var xk = offsetX + k * stepX;
+    var yk = H - ((data[k] - minP) / range) * (H * 0.85) - H * 0.075;
+    if (k === 0) ctx.moveTo(xk, yk); else ctx.lineTo(xk, yk);
   }
   ctx.stroke();
-  const lastX = offsetX + (data.length - 1) * stepX;
-  const lastY = H - ((data[data.length - 1] - minP) / range) * (H * 0.85) - H * 0.075;
+  var lastX = offsetX + (data.length - 1) * stepX;
+  var lastY = H - ((data[data.length - 1] - minP) / range) * (H * 0.85) - H * 0.075;
   ctx.fillStyle = color; ctx.beginPath(); ctx.arc(lastX, lastY, 2.5, 0, Math.PI * 2); ctx.fill();
 }
 
@@ -1364,17 +1414,17 @@ function dibujarChart(serie) {
 // ==========================================================
 function exportCSV() {
   if (state.trades.length === 0) { alert('No hay operaciones para exportar.'); return; }
-  let csv = 'id,serie,symbol,type,level,z_score,stake,entry_price,exit_price,profit,status,balance_after,latency_ms,start_iso,exit_iso\n';
-  state.trades.forEach(t => {
-    const startIso = new Date(t.startTime).toISOString();
-    const exitIso = t.exitTime ? new Date(t.exitTime).toISOString() : '';
+  var csv = 'id,serie,symbol,type,level,z_score,stake,entry_price,exit_price,profit,status,balance_after,latency_ms,start_iso,exit_iso\n';
+  state.trades.forEach(function(t) {
+    var startIso = new Date(t.startTime).toISOString();
+    var exitIso = t.exitTime ? new Date(t.exitTime).toISOString() : '';
     csv += [t.id, t.serie, t.symbol, t.type, t.level, t.zScore.toFixed(3), t.stake, t.entryPrice,
       t.exitPrice != null ? t.exitPrice : '', t.profit != null ? t.profit : '', t.status,
       t.balanceAfter != null ? t.balanceAfter : '', t.latency ? t.latency.toFixed(0) : '', startIso, exitIso].join(',') + '\n';
   });
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = `deriv_trades_${Date.now()}.csv`;
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href = url; a.download = 'deriv_trades_' + Date.now() + '.csv';
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   log('CSV exportado.', '#2ea043');
 }
@@ -1384,38 +1434,39 @@ function exportCSV() {
 // ==========================================================
 function toggleBot() {
   state.botRunning = !state.botRunning;
-  const btn = document.getElementById('btnToggleBot');
+  var btn = document.getElementById('btnToggleBot');
   if (state.botRunning) {
     syncEnabledSeries();
-    btn.innerText = '⏸ Pausar Bot';
+    btn.innerText = 'Pausar Bot';
     btn.className = 'btn btn-red';
-    log(`▶ BOT ACTIVADO (concurrencia: ${getConcurrencyMode()}, gestión: ${getManagementMode()})`, '#2ea043');
-    sendTelegram(`▶ *Bot ACTIVADO*\nCuenta: \`${state.accountId}\`\nConcurrencia: ${getConcurrencyMode()}\nGestión: ${getManagementMode()}`);
+    log('BOT ACTIVADO (concurrencia: ' + getConcurrencyMode() + ', gestión: ' + getManagementMode() + ')', '#2ea043');
+    sendTelegram('*Bot ACTIVADO*\nCuenta: `' + state.accountId + '`\nConcurrencia: ' + getConcurrencyMode() + '\nGestión: ' + getManagementMode());
   } else {
-    btn.innerText = '▶ Iniciar Bot';
+    btn.innerText = 'Iniciar Bot';
     btn.className = 'btn btn-green';
-    log('⏸ BOT PAUSADO', '#f0883e');
-    sendTelegram(`⏸ *Bot PAUSADO*\nBalance: $${state.balance.toFixed(2)}\nPnL Sesión: ${state.netPnL >= 0 ? '+' : ''}$${state.netPnL.toFixed(2)}`);
+    log('BOT PAUSADO', '#f0883e');
+    sendTelegram('*Bot PAUSADO*\nBalance: $' + state.balance.toFixed(2) + '\nPnL Sesión: ' + (state.netPnL >= 0 ? '+' : '') + '$' + state.netPnL.toFixed(2));
   }
 }
 
 function cambiarActivo(serie) {
-  const sel = document.getElementById('cfgSymbol' + serie);
-  const s = state.series[serie];
+  var sel = document.getElementById('cfgSymbol' + serie);
+  var s = state.series[serie];
   s.symbol = sel.value;
   s.prices = []; s.epochs = []; s.returns = []; s.displayPrices = [];
   s.cooldownUntil = 0; s.lastTradeStatus = null;
   if (state.isConnected) solicitarTicks(serie);
 }
 
-function desconectar(manual = true) {
+function desconectar(manual) {
+  manual = manual === undefined ? true : manual;
   if (state.pingTimer) { clearInterval(state.pingTimer); state.pingTimer = null; }
   if (state.watchdogTimer) { clearInterval(state.watchdogTimer); state.watchdogTimer = null; }
   if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
   if (state.ws) { try { state.ws.close(); } catch(e){} state.ws = null; }
   state.isConnected = false;
   if (manual) { state.botRunning = false; state.reconnectAttempts = 0; }
-  SERIES_KEYS.forEach(k => {
+  SERIES_KEYS.forEach(function(k) {
     state.ticksSubscribed[k] = false;
     state.openTrades[k] = null;
     state.indepLevel[k] = 1;
@@ -1433,11 +1484,17 @@ function desconectar(manual = true) {
 }
 
 // ==========================================================
-// INICIALIZACIÓN
+// INICIALIZACION
 // ==========================================================
 cargarTelegramConfig();
 syncEnabledSeries();
-document.getElementById('cfgTgEnabled')?.addEventListener('change', () => {
-  state.tg.enabled = document.getElementById('cfgTgEnabled').checked;
-  guardarTelegramConfig();
-});
+var tgEnabledEl = document.getElementById('cfgTgEnabled');
+if (tgEnabledEl) {
+  tgEnabledEl.addEventListener('change', function() {
+    state.tg.enabled = tgEnabledEl.checked;
+    guardarTelegramConfig();
+  });
+}
+</script>
+</body>
+</html>
