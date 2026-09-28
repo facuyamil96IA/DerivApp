@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Deriv Options API v1 - Suite Dual V75/V100</title>
+  <title>Deriv Options API v1 - Suite Multi-Serie</title>
   <style>
     :root {
       --bg: #090d16; --card: #151b23; --card-alt: #0d1117; --border: #30363d;
@@ -12,7 +12,8 @@
       --red: #f85149; --red-glow: rgba(248, 81, 73, 0.25);
       --amber: #f0883e; --cyan: #38bdf8;
       --text: #f1f5f9; --text-muted: #94a3b8;
-      --v75: #38bdf8; --v100: #f59e0b;
+      --v75: #38bdf8; --v100: #f59e0b; --v25: #a78bfa; --v50: #34d399;
+      --tg: #229ed9;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; padding: 16px; min-height: 100vh; }
@@ -26,8 +27,11 @@
     .dot.err { background: var(--red); }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
     .auth-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
-    .auth-row { display: grid; grid-template-columns: 1.8fr 1fr 1.2fr auto; gap: 10px; align-items: flex-end; }
-    @media (max-width: 900px) { .auth-row { grid-template-columns: 1fr; } }
+    .auth-row { display: grid; grid-template-columns: 1.5fr 1fr 1.2fr auto auto; gap: 10px; align-items: flex-end; }
+    @media (max-width: 1000px) { .auth-row { grid-template-columns: 1fr; } }
+    .tg-card { background: var(--card); border: 1px solid rgba(34, 158, 217, 0.4); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .tg-row { display: grid; grid-template-columns: 1.5fr 1fr auto auto auto; gap: 10px; align-items: flex-end; }
+    @media (max-width: 1000px) { .tg-row { grid-template-columns: 1fr; } }
     label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px; }
     input, select { width: 100%; background: var(--card-alt); border: 1px solid var(--border); border-radius: 6px; padding: 9px 12px; color: #fff; font-size: 0.85rem; font-family: monospace; }
     .btn { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; font-size: 0.82rem; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
@@ -37,6 +41,10 @@
     .btn-green:hover:not(:disabled) { background: #268036; }
     .btn-red { background: var(--red); }
     .btn-red:hover:not(:disabled) { background: #d33c33; }
+    .btn-amber { background: var(--amber); }
+    .btn-amber:hover:not(:disabled) { background: #d97706; }
+    .btn-tg { background: var(--tg); }
+    .btn-tg:hover:not(:disabled) { background: #1a8bb8; }
     .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
     .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
     .kpi-lbl { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
@@ -46,22 +54,26 @@
     .trading-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
     @media (max-width: 900px) { .trading-grid { grid-template-columns: 1fr; } }
     .box-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
-    .dual-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    @media (max-width: 900px) { .dual-charts { grid-template-columns: 1fr; } }
-    .chart-panel { background: var(--card-alt); border: 1px solid var(--border); border-radius: 8px; padding: 10px; position: relative; }
+    .quad-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 900px) { .quad-charts { grid-template-columns: 1fr; } }
+    .chart-panel { background: var(--card-alt); border: 1px solid var(--border); border-radius: 8px; padding: 8px; position: relative; }
     .chart-panel.a { border-color: rgba(56, 189, 248, 0.5); }
     .chart-panel.b { border-color: rgba(245, 158, 11, 0.5); }
-    .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .chart-title { font-size: 0.85rem; font-weight: 700; }
+    .chart-panel.c { border-color: rgba(167, 139, 250, 0.5); }
+    .chart-panel.d { border-color: rgba(52, 211, 153, 0.5); }
+    .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 6px; }
+    .chart-title { font-size: 0.75rem; font-weight: 700; }
     .chart-title.a { color: var(--v75); }
     .chart-title.b { color: var(--v100); }
-    .chart-price { font-family: monospace; font-size: 1.05rem; font-weight: 700; }
-    .chart-sub { font-size: 0.7rem; color: var(--text-muted); font-family: monospace; }
-    canvas { display: block; width: 100%; height: 200px; background: #020617; border-radius: 4px; }
-    .zbar { position: relative; height: 8px; background: #020617; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); margin-top: 6px; }
+    .chart-title.c { color: var(--v25); }
+    .chart-title.d { color: var(--v50); }
+    .chart-price { font-family: monospace; font-size: 0.85rem; font-weight: 700; }
+    .chart-sub { font-size: 0.65rem; color: var(--text-muted); font-family: monospace; }
+    canvas { display: block; width: 100%; height: 130px; background: #020617; border-radius: 4px; }
+    .zbar { position: relative; height: 6px; background: #020617; border-radius: 3px; overflow: hidden; border: 1px solid var(--border); margin-top: 4px; }
     .zbar-center { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: #64748b; }
-    .zbar-cursor { position: absolute; top: 0; bottom: 0; width: 4px; margin-left: -2px; background: #fff; border-radius: 1px; transition: left 0.1s linear; }
-    .trade-badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.75); padding: 6px 14px; border-radius: 6px; font-family: monospace; font-weight: 700; font-size: 0.85rem; pointer-events: none; opacity: 0; transition: opacity 0.2s; }
+    .zbar-cursor { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: #fff; border-radius: 1px; transition: left 0.1s linear; }
+    .trade-badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.75); padding: 4px 10px; border-radius: 4px; font-family: monospace; font-weight: 700; font-size: 0.7rem; pointer-events: none; opacity: 0; transition: opacity 0.2s; }
     .trade-badge.show { opacity: 1; }
     .trade-badge.rise { color: var(--green); border: 1px solid var(--green); }
     .trade-badge.fall { color: var(--red); border: 1px solid var(--red); }
@@ -77,6 +89,10 @@
     .pill-fall { background: rgba(248, 81, 73, 0.15); color: var(--red); border: 1px solid rgba(248, 81, 73, 0.5); }
     #console { background: #020617; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-family: monospace; font-size: 0.73rem; height: 140px; overflow-y: auto; color: var(--cyan); }
     .config-extra { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-top: 6px; }
+    .account-info { font-size: 0.72rem; color: var(--text-muted); font-family: monospace; margin-top: 4px; }
+    .tg-info { font-size: 0.72rem; color: var(--text-muted); font-family: monospace; margin-top: 4px; }
+    .slot-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .slot-row input[type="checkbox"] { width: auto; }
   </style>
 </head>
 <body>
@@ -85,10 +101,10 @@
 
   <header>
     <div style="display: flex; align-items: center; gap: 10px;">
-      <span class="badge-sym">DUAL</span>
+      <span class="badge-sym">MULTI</span>
       <div>
         <h2 style="font-size: 1.05rem; color:#fff;">Deriv Options API v1 — Micro-Reversión Z-Score</h2>
-        <p style="font-size: 0.72rem; color: var(--text-muted);">V75 + V100 · Streak Filter · Cooldown Asimétrico · Auto-Reconnect</p>
+        <p style="font-size: 0.72rem; color: var(--text-muted);">Volatility 25–100 · Hasta 4 series simultáneas · Streak Filter · Telegram</p>
       </div>
     </div>
     <div style="display: flex; gap: 8px; align-items: center;">
@@ -99,30 +115,70 @@
       <div class="status-pill" style="color: var(--cyan);">
         <span>Cuenta: </span><strong id="lblActiveAccount">Ninguna</strong>
       </div>
+      <div class="status-pill" style="color: var(--tg);">
+        <span>TG: </span><strong id="lblTgStatus">Sin configurar</strong>
+      </div>
     </div>
   </header>
 
+  <!-- AUTENTICACIÓN DERIV -->
   <div class="auth-card">
     <div class="auth-row">
       <div>
         <label>Token PAT</label>
-        <input type="password" id="cfgToken" value="pat_cce87dee2e6947e8383e44006393f05f59459b66fd25ddfb819bc6a1dc50d154">
+        <input type="password" id="cfgToken" placeholder="pat_..." autocomplete="off">
       </div>
       <div>
         <label>Deriv-App-ID</label>
-        <input type="text" id="cfgAppId" value="34sXT58c5CvohLOUewrMU">
+        <input type="text" id="cfgAppId" placeholder="Ej: 12345" autocomplete="off">
       </div>
       <div>
-        <label>Cuenta</label>
-        <select id="selAccount">
-          <option value="DOT91938218|demo" selected>DOT91938218 (Demo)</option>
-          <option value="ROT90816370|real">ROT90816370 (Real)</option>
+        <label>Cuenta de Trading</label>
+        <select id="selAccount" disabled>
+          <option value="">— Busca cuentas primero —</option>
         </select>
       </div>
+      <div>
+        <button id="btnFetchAccounts" class="btn btn-amber" onclick="buscarCuentas()">🔍 Buscar cuentas</button>
+      </div>
       <div style="display: flex; gap: 8px;">
-        <button id="btnConnect" class="btn btn-green" onclick="conectarCuentaOptions()">Conectar</button>
+        <button id="btnConnect" class="btn btn-green" onclick="conectarCuentaOptions()" disabled>Conectar</button>
         <button id="btnDisconnect" class="btn btn-red" onclick="desconectar(true)" style="display: none;">Desconectar</button>
       </div>
+    </div>
+    <div id="accountInfo" class="account-info"></div>
+  </div>
+
+  <!-- CONFIGURACIÓN TELEGRAM -->
+  <div class="tg-card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="font-size: 0.9rem; color: var(--tg);">📱 Notificaciones Telegram</h3>
+      <label style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-muted); cursor: pointer;">
+        <input type="checkbox" id="cfgTgEnabled" checked style="width: auto;">
+        Notificaciones activas
+      </label>
+    </div>
+    <div class="tg-row">
+      <div>
+        <label>Bot Token (de @BotFather)</label>
+        <input type="password" id="cfgTgToken" placeholder="123456:ABC-DEF..." autocomplete="off">
+      </div>
+      <div>
+        <label>Chat ID</label>
+        <input type="text" id="cfgTgChatId" placeholder="Ej: 123456789" autocomplete="off">
+      </div>
+      <div>
+        <button class="btn btn-tg" onclick="detectarChatId()">🔎 Detectar Chat ID</button>
+      </div>
+      <div>
+        <button class="btn btn-tg" onclick="probarTelegram()">📤 Probar envío</button>
+      </div>
+      <div>
+        <button class="btn" onclick="guardarTelegramConfig()">💾 Guardar</button>
+      </div>
+    </div>
+    <div id="tgInfo" class="tg-info">
+      Ingresa el token de tu bot y presiona "Detectar Chat ID" (envía un mensaje a tu bot primero desde Telegram).
     </div>
   </div>
 
@@ -138,7 +194,7 @@
       <div id="kpiWinLoss" class="kpi-sub">0W / 0L (0 Totales)</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-lbl">Martingala</div>
+      <div class="kpi-lbl">Gestión</div>
       <div id="kpiLevel" class="kpi-val">L1 / L1</div>
       <div id="kpiNextStake" class="kpi-sub">Próximo: $0.35 / $0.35</div>
     </div>
@@ -148,14 +204,24 @@
       <div id="kpiPF" class="kpi-sub">Profit Factor: 0.00</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-lbl">Cooldown A (V75)</div>
+      <div class="kpi-lbl">Cooldown A</div>
       <div id="kpiCdA" class="kpi-val txt-green">Listo</div>
       <div id="kpiCdAInfo" class="kpi-sub">Sin restricción</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-lbl">Cooldown B (V100)</div>
+      <div class="kpi-lbl">Cooldown B</div>
       <div id="kpiCdB" class="kpi-val txt-green">Listo</div>
       <div id="kpiCdBInfo" class="kpi-sub">Sin restricción</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-lbl">Cooldown C</div>
+      <div id="kpiCdC" class="kpi-val txt-green">Listo</div>
+      <div id="kpiCdCInfo" class="kpi-sub">Sin restricción</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-lbl">Cooldown D</div>
+      <div id="kpiCdD" class="kpi-val txt-green">Listo</div>
+      <div id="kpiCdDInfo" class="kpi-sub">Sin restricción</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-lbl">Latencia Última Orden</div>
@@ -164,14 +230,24 @@
     </div>
   </div>
 
-  <div class="dual-charts">
+  <!-- 4 GRÁFICOS -->
+  <div class="quad-charts">
     <div class="chart-panel a" id="panelA">
       <div class="chart-header">
         <div>
-          <div class="chart-title a">Serie A — V75</div>
-          <select id="cfgSymbolA" onchange="cambiarActivo('A')" style="margin-top:4px;">
-            <option value="1HZ75V" selected>Volatility 75 (1s) — CD 12/65s</option>
-            <option value="R_75">Volatility 75 (2s) — CD 15/130s</option>
+          <div class="chart-title a">Serie A</div>
+          <select id="cfgSymbolA" onchange="cambiarActivo('A')" style="margin-top:2px; font-size:0.7rem; padding:4px 6px;">
+            <option value="1HZ25V">Vol 25 (1s)</option>
+            <option value="1HZ50V">Vol 50 (1s)</option>
+            <option value="1HZ75V" selected>Vol 75 (1s)</option>
+            <option value="1HZ100V">Vol 100 (1s)</option>
+            <option value="R_25">Vol 25 (2s)</option>
+            <option value="R_50">Vol 50 (2s)</option>
+            <option value="R_75">Vol 75 (2s)</option>
+            <option value="R_100">Vol 100 (2s)</option>
+            <option value="1HZ15V">Vol 15 (1s)</option>
+            <option value="1HZ30V">Vol 30 (1s)</option>
+            <option value="1HZ90V">Vol 90 (1s)</option>
           </select>
         </div>
         <div style="text-align: right;">
@@ -179,19 +255,31 @@
           <div class="chart-sub" id="deltaA">Δ 0.000%</div>
         </div>
       </div>
-      <canvas id="chartA" width="700" height="200"></canvas>
-      <div class="chart-sub" id="zA" style="margin-top:6px;">Z: 0.00σ · Buffer: 0/60</div>
+      <canvas id="chartA" width="350" height="130"></canvas>
+      <div class="chart-sub" id="zA" style="margin-top:4px;">Z: 0.00σ · Buffer: 0/60</div>
       <div class="zbar"><div class="zbar-center"></div><div class="zbar-cursor" id="zbarA" style="left:50%;"></div></div>
       <div class="trade-badge" id="badgeA"></div>
+      <label style="display:flex; align-items:center; gap:4px; margin-top:4px; font-size:0.65rem; color:var(--text-muted); cursor:pointer;">
+        <input type="checkbox" id="enableA" checked style="width:auto;"> Activar Serie A
+      </label>
     </div>
 
     <div class="chart-panel b" id="panelB">
       <div class="chart-header">
         <div>
-          <div class="chart-title b">Serie B — V100</div>
-          <select id="cfgSymbolB" onchange="cambiarActivo('B')" style="margin-top:4px;">
-            <option value="1HZ100V" selected>Volatility 100 (1s) — CD 12/65s</option>
-            <option value="R_100">Volatility 100 (2s) — CD 15/130s</option>
+          <div class="chart-title b">Serie B</div>
+          <select id="cfgSymbolB" onchange="cambiarActivo('B')" style="margin-top:2px; font-size:0.7rem; padding:4px 6px;">
+            <option value="1HZ25V">Vol 25 (1s)</option>
+            <option value="1HZ50V">Vol 50 (1s)</option>
+            <option value="1HZ75V">Vol 75 (1s)</option>
+            <option value="1HZ100V" selected>Vol 100 (1s)</option>
+            <option value="R_25">Vol 25 (2s)</option>
+            <option value="R_50">Vol 50 (2s)</option>
+            <option value="R_75">Vol 75 (2s)</option>
+            <option value="R_100">Vol 100 (2s)</option>
+            <option value="1HZ15V">Vol 15 (1s)</option>
+            <option value="1HZ30V">Vol 30 (1s)</option>
+            <option value="1HZ90V">Vol 90 (1s)</option>
           </select>
         </div>
         <div style="text-align: right;">
@@ -199,17 +287,84 @@
           <div class="chart-sub" id="deltaB">Δ 0.000%</div>
         </div>
       </div>
-      <canvas id="chartB" width="700" height="200"></canvas>
-      <div class="chart-sub" id="zB" style="margin-top:6px;">Z: 0.00σ · Buffer: 0/60</div>
+      <canvas id="chartB" width="350" height="130"></canvas>
+      <div class="chart-sub" id="zB" style="margin-top:4px;">Z: 0.00σ · Buffer: 0/60</div>
       <div class="zbar"><div class="zbar-center"></div><div class="zbar-cursor" id="zbarB" style="left:50%;"></div></div>
       <div class="trade-badge" id="badgeB"></div>
+      <label style="display:flex; align-items:center; gap:4px; margin-top:4px; font-size:0.65rem; color:var(--text-muted); cursor:pointer;">
+        <input type="checkbox" id="enableB" checked style="width:auto;"> Activar Serie B
+      </label>
+    </div>
+
+    <div class="chart-panel c" id="panelC">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title c">Serie C</div>
+          <select id="cfgSymbolC" onchange="cambiarActivo('C')" style="margin-top:2px; font-size:0.7rem; padding:4px 6px;">
+            <option value="1HZ25V">Vol 25 (1s)</option>
+            <option value="1HZ50V" selected>Vol 50 (1s)</option>
+            <option value="1HZ75V">Vol 75 (1s)</option>
+            <option value="1HZ100V">Vol 100 (1s)</option>
+            <option value="R_25">Vol 25 (2s)</option>
+            <option value="R_50">Vol 50 (2s)</option>
+            <option value="R_75">Vol 75 (2s)</option>
+            <option value="R_100">Vol 100 (2s)</option>
+            <option value="1HZ15V">Vol 15 (1s)</option>
+            <option value="1HZ30V">Vol 30 (1s)</option>
+            <option value="1HZ90V">Vol 90 (1s)</option>
+          </select>
+        </div>
+        <div style="text-align: right;">
+          <div class="chart-price" id="priceC">--</div>
+          <div class="chart-sub" id="deltaC">Δ 0.000%</div>
+        </div>
+      </div>
+      <canvas id="chartC" width="350" height="130"></canvas>
+      <div class="chart-sub" id="zC" style="margin-top:4px;">Z: 0.00σ · Buffer: 0/60</div>
+      <div class="zbar"><div class="zbar-center"></div><div class="zbar-cursor" id="zbarC" style="left:50%;"></div></div>
+      <div class="trade-badge" id="badgeC"></div>
+      <label style="display:flex; align-items:center; gap:4px; margin-top:4px; font-size:0.65rem; color:var(--text-muted); cursor:pointer;">
+        <input type="checkbox" id="enableC" style="width:auto;"> Activar Serie C
+      </label>
+    </div>
+
+    <div class="chart-panel d" id="panelD">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title d">Serie D</div>
+          <select id="cfgSymbolD" onchange="cambiarActivo('D')" style="margin-top:2px; font-size:0.7rem; padding:4px 6px;">
+            <option value="1HZ25V">Vol 25 (1s)</option>
+            <option value="1HZ50V">Vol 50 (1s)</option>
+            <option value="1HZ75V">Vol 75 (1s)</option>
+            <option value="1HZ100V">Vol 100 (1s)</option>
+            <option value="R_25">Vol 25 (2s)</option>
+            <option value="R_50">Vol 50 (2s)</option>
+            <option value="R_75">Vol 75 (2s)</option>
+            <option value="R_100">Vol 100 (2s)</option>
+            <option value="1HZ15V">Vol 15 (1s)</option>
+            <option value="1HZ30V">Vol 30 (1s)</option>
+            <option value="1HZ90V" selected>Vol 90 (1s)</option>
+          </select>
+        </div>
+        <div style="text-align: right;">
+          <div class="chart-price" id="priceD">--</div>
+          <div class="chart-sub" id="deltaD">Δ 0.000%</div>
+        </div>
+      </div>
+      <canvas id="chartD" width="350" height="130"></canvas>
+      <div class="chart-sub" id="zD" style="margin-top:4px;">Z: 0.00σ · Buffer: 0/60</div>
+      <div class="zbar"><div class="zbar-center"></div><div class="zbar-cursor" id="zbarD" style="left:50%;"></div></div>
+      <div class="trade-badge" id="badgeD"></div>
+      <label style="display:flex; align-items:center; gap:4px; margin-top:4px; font-size:0.65rem; color:var(--text-muted); cursor:pointer;">
+        <input type="checkbox" id="enableD" style="width:auto;"> Activar Serie D
+      </label>
     </div>
   </div>
 
   <div class="trading-grid">
     <div class="box-card">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="font-size: 0.9rem; color:#fff;">Motor Estadístico Dual + Streak Filter</h3>
+        <h3 style="font-size: 0.9rem; color:#fff;">Motor Estadístico Multi-Serie</h3>
         <span style="font-size: 0.72rem; color: var(--text-muted);">Umbral: |Z| ≥ 3.2σ · Duración: 1 tick</span>
       </div>
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
@@ -228,9 +383,11 @@
         <div>
           <label>Modo Operativo</label>
           <select id="cfgMode">
-            <option value="dual" selected>Dual (ambas series)</option>
-            <option value="A">Solo V75</option>
-            <option value="B">Solo V100</option>
+            <option value="multi" selected>Multi (todas las series activas)</option>
+            <option value="A">Solo A</option>
+            <option value="B">Solo B</option>
+            <option value="C">Solo C</option>
+            <option value="D">Solo D</option>
           </select>
         </div>
       </div>
@@ -239,15 +396,16 @@
         <div>
           <label>Concurrencia</label>
           <select id="cfgConcurrency">
-            <option value="parallel" selected>Paralelo (ambas pueden operar a la vez)</option>
+            <option value="parallel" selected>Paralelo (todas a la vez)</option>
             <option value="exclusive">Exclusivo (una operación global)</option>
           </select>
         </div>
         <div>
-          <label>Martingala</label>
+          <label>Gestión de Stake</label>
           <select id="cfgMartingale">
-            <option value="shared">Compartida (nivel único)</option>
-            <option value="independent" selected>Independiente (por serie)</option>
+            <option value="flat">Stake Plano (sin escalado)</option>
+            <option value="independent" selected>Martingala Independiente</option>
+            <option value="shared">Martingala Compartida</option>
           </select>
         </div>
         <div>
@@ -259,9 +417,9 @@
         </div>
       </div>
 
-      <button id="btnToggleBot" class="btn btn-green" onclick="toggleBot()" disabled>▶ Iniciar Bot Dual</button>
+      <button id="btnToggleBot" class="btn btn-green" onclick="toggleBot()" disabled>▶ Iniciar Bot</button>
       <div style="font-size: 0.7rem; color: var(--text-muted); font-family: monospace;">
-        Cooldown asimétrico: WIN=12s · LOSS=65s (1s) | WIN=15s · LOSS=130s (2s)
+        Cooldown: WIN=12s · LOSS=65s (1s) | WIN=15s · LOSS=130s (2s)
       </div>
     </div>
 
@@ -269,8 +427,10 @@
       <h3 style="font-size: 0.9rem; color:#fff;">Operación Manual</h3>
       <p style="font-size: 0.72rem; color: var(--text-muted);">Ejecuta 1 tick con la serie seleccionada.</p>
       <select id="cfgManualAsset">
-        <option value="A" selected>Serie A (V75)</option>
-        <option value="B">Serie B (V100)</option>
+        <option value="A" selected>Serie A</option>
+        <option value="B">Serie B</option>
+        <option value="C">Serie C</option>
+        <option value="D">Serie D</option>
       </select>
       <div style="display: flex; gap: 10px; margin-top: auto;">
         <button id="btnManualCall" class="btn btn-green" style="flex:1; padding: 14px;" onclick="ejecutarManual('CALL')" disabled>▲ CALL</button>
@@ -296,13 +456,13 @@
           </tr>
         </thead>
         <tbody id="tblTradesBody">
-          <tr><td colspan="13" style="text-align: center; color: var(--text-muted); padding: 14px;">Esperando conexión...</td></tr>
+          <tr><td colspan="13" style="text-align: center; color: var(--text-muted); padding: 14px;">Ingresa token y busca cuentas para comenzar...</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <div id="console">> Conecta tu cuenta para iniciar el motor dual...</div>
+  <div id="console">> Ingresa tu token PAT, tu Deriv-App-ID y haz clic en "Buscar cuentas"...</div>
 
 </div>
 
@@ -311,6 +471,7 @@
 // CONFIG
 // ==========================================================
 const API_BASE = 'https://api.derivws.com';
+const ENDPOINT_ACCOUNTS = `${API_BASE}/trading/v1/options/accounts`;
 const ENDPOINT_OTP = `${API_BASE}/trading/v1/options/accounts/{accountId}/otp`;
 const MULT_MARTINGALE = 2.14;
 const PING_INTERVAL = 30000;
@@ -320,34 +481,67 @@ const MAX_POINTS = 120;
 const RECONNECT_BASE_DELAY = 1000;
 const RECONNECT_MAX_DELAY = 30000;
 
+// Cooldown asimétrico (segundos)
 const COOLDOWN = {
-  '1HZ75V':  { win: 12, loss: 65,  interval: 1 },
-  '1HZ100V': { win: 12, loss: 65,  interval: 1 },
-  'R_75':    { win: 15, loss: 130, interval: 2 },
-  'R_100':   { win: 15, loss: 130, interval: 2 }
+  '1HZ15V': { win: 12, loss: 65, interval: 1 },
+  '1HZ25V': { win: 12, loss: 65, interval: 1 },
+  '1HZ30V': { win: 12, loss: 65, interval: 1 },
+  '1HZ50V': { win: 12, loss: 65, interval: 1 },
+  '1HZ75V': { win: 12, loss: 65, interval: 1 },
+  '1HZ90V': { win: 12, loss: 65, interval: 1 },
+  '1HZ100V': { win: 12, loss: 65, interval: 1 },
+  'R_25':  { win: 15, loss: 130, interval: 2 },
+  'R_50':  { win: 15, loss: 130, interval: 2 },
+  'R_75':  { win: 15, loss: 130, interval: 2 },
+  'R_100': { win: 15, loss: 130, interval: 2 }
 };
 
 // ==========================================================
-// ESTADO
+// ESTADO — 4 SERIES
 // ==========================================================
+const SERIES_KEYS = ['A', 'B', 'C', 'D'];
+
+function crearSerie(symbol) {
+  return {
+    symbol: symbol || '1HZ75V',
+    prices: [], epochs: [], returns: [], displayPrices: [],
+    lastPrice: 0, lastTradeEpoch: 0, lastTradeStatus: null,
+    cooldownUntil: 0, enabled: false
+  };
+}
+
 const state = {
   token: '', appId: '', accountId: '', accountType: 'demo',
   ws: null, isConnected: false, botRunning: false,
   balance: 0, currency: 'USD',
   initialBalance: 0, peakBalance: 0, maxDD: 0,
   sharedLevel: 1,
-  indepLevel: { A: 1, B: 1 },
+  indepLevel: { A: 1, B: 1, C: 1, D: 1 },
   wins: 0, losses: 0, netPnL: 0,
   grossProfit: 0, grossLoss: 0,
   pingTimer: null, watchdogTimer: null,
   reconnectAttempts: 0, reconnectTimer: null,
-  ticksSubscribedA: false, ticksSubscribedB: false,
-  lastTickAtA: 0, lastTickAtB: 0,
+  ticksSubscribed: { A: false, B: false, C: false, D: false },
+  lastTickAt: { A: 0, B: 0, C: 0, D: 0 },
   proposalSentAt: 0, lastLatency: 0,
-  trades: [], openTrades: {}, nextTradeId: 1,
-  A: { symbol: '1HZ75V', prices: [], epochs: [], returns: [], displayPrices: [], lastPrice: 0, lastTradeEpoch: 0, lastTradeStatus: null, cooldownUntil: 0 },
-  B: { symbol: '1HZ100V', prices: [], epochs: [], returns: [], displayPrices: [], lastPrice: 0, lastTradeEpoch: 0, lastTradeStatus: null, cooldownUntil: 0 }
+  trades: [], openTrades: { A: null, B: null, C: null, D: null },
+  nextTradeId: 1,
+  tg: { enabled: true, token: '', chatId: '' },
+  series: {
+    A: crearSerie('1HZ75V'),
+    B: crearSerie('1HZ100V'),
+    C: crearSerie('1HZ50V'),
+    D: crearSerie('1HZ90V')
+  }
 };
+
+// Marcar series habilitadas según los checkboxes
+function syncEnabledSeries() {
+  SERIES_KEYS.forEach(k => {
+    const cb = document.getElementById('enable' + k);
+    state.series[k].enabled = cb ? cb.checked : false;
+  });
+}
 
 // ==========================================================
 // LOG / UI
@@ -362,62 +556,246 @@ function setDot(cls, txt) {
   document.getElementById('statusDot').className = `dot ${cls}`;
   document.getElementById('wsStatus').innerText = txt;
 }
+function setTgStatus(txt, color = 'var(--text-muted)') {
+  const el = document.getElementById('lblTgStatus');
+  el.innerText = txt;
+  el.style.color = color;
+}
 
 // ==========================================================
-// HELPERS DE MODO
+// TELEGRAM
+// ==========================================================
+function guardarTelegramConfig() {
+  const token = document.getElementById('cfgTgToken').value.trim();
+  const chatId = document.getElementById('cfgTgChatId').value.trim();
+  const enabled = document.getElementById('cfgTgEnabled').checked;
+  state.tg = { enabled, token, chatId };
+  try { localStorage.setItem('deriv_tg_config', JSON.stringify(state.tg)); } catch (e) {}
+  if (token && chatId) {
+    setTgStatus('Configurado ✓', 'var(--green)');
+    log('✔ Telegram configurado y guardado.', '#2ea043');
+    document.getElementById('tgInfo').innerText = '✅ Configuración guardada. Puedes probar el envío.';
+    document.getElementById('tgInfo').style.color = 'var(--green)';
+  } else {
+    setTgStatus('Incompleto', 'var(--amber)');
+    log('⚠ Telegram incompleto. Faltan token o chat ID.', '#f0883e');
+  }
+}
+function cargarTelegramConfig() {
+  try {
+    const raw = localStorage.getItem('deriv_tg_config');
+    if (!raw) return;
+    const cfg = JSON.parse(raw);
+    if (cfg.token) document.getElementById('cfgTgToken').value = cfg.token;
+    if (cfg.chatId) document.getElementById('cfgTgChatId').value = cfg.chatId;
+    if (typeof cfg.enabled === 'boolean') document.getElementById('cfgTgEnabled').checked = cfg.enabled;
+    state.tg = { enabled: cfg.enabled ?? true, token: cfg.token || '', chatId: cfg.chatId || '' };
+    if (cfg.token && cfg.chatId) setTgStatus('Configurado ✓', 'var(--green)');
+  } catch (e) {}
+}
+async function sendTelegram(msg) {
+  if (!state.tg.enabled) return;
+  if (!state.tg.token || !state.tg.chatId) return;
+  const url = `https://api.telegram.org/bot${state.tg.token}/sendMessage`;
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: state.tg.chatId, text: msg, parse_mode: 'Markdown', disable_web_page_preview: true })
+    });
+  } catch (err) { console.warn('Telegram error:', err); }
+}
+async function detectarChatId() {
+  const token = document.getElementById('cfgTgToken').value.trim();
+  if (!token) { alert('Primero ingresa el Bot Token.'); return; }
+  const info = document.getElementById('tgInfo');
+  info.innerText = '🔎 Consultando actualizaciones al bot...';
+  info.style.color = 'var(--amber)';
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates`);
+    const data = await res.json();
+    if (!data.ok) {
+      info.innerText = `❌ Error: ${data.description || 'Token inválido'}`;
+      info.style.color = 'var(--red)';
+      return;
+    }
+    if (!data.result || data.result.length === 0) {
+      info.innerText = '⚠ No hay mensajes. Envía un mensaje a tu bot desde Telegram y vuelve a intentar.';
+      info.style.color = 'var(--amber)';
+      return;
+    }
+    let chatId = null;
+    for (let i = data.result.length - 1; i >= 0; i--) {
+      const upd = data.result[i];
+      if (upd.message && upd.message.chat && upd.message.chat.id) { chatId = upd.message.chat.id; break; }
+      if (upd.edited_message && upd.edited_message.chat && upd.edited_message.chat.id) { chatId = upd.edited_message.chat.id; break; }
+    }
+    if (chatId) {
+      document.getElementById('cfgTgChatId').value = chatId;
+      info.innerText = `✅ Chat ID detectado: ${chatId}. Guarda la configuración.`;
+      info.style.color = 'var(--green)';
+      log(`✔ Chat ID detectado: ${chatId}`, '#2ea043');
+    } else {
+      info.innerText = '⚠ No se encontró un chat con ID. Envía /start a tu bot desde Telegram.';
+      info.style.color = 'var(--amber)';
+    }
+  } catch (e) {
+    info.innerText = `❌ Error de red: ${e.message}`;
+    info.style.color = 'var(--red)';
+  }
+}
+async function probarTelegram() {
+  const token = document.getElementById('cfgTgToken').value.trim();
+  const chatId = document.getElementById('cfgTgChatId').value.trim();
+  const info = document.getElementById('tgInfo');
+  if (!token || !chatId) {
+    info.innerText = '⚠ Faltan token o chat ID para probar.';
+    info.style.color = 'var(--amber)';
+    return;
+  }
+  info.innerText = '📤 Enviando mensaje de prueba...';
+  info.style.color = 'var(--amber)';
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: '✅ *Test desde la app de trading Deriv*\n\nSi ves este mensaje, las notificaciones están funcionando correctamente.', parse_mode: 'Markdown' })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      info.innerText = '✅ Mensaje de prueba enviado. Revisa Telegram.';
+      info.style.color = 'var(--green)';
+      log('✔ Mensaje de prueba enviado a Telegram.', '#2ea043');
+    } else {
+      info.innerText = `❌ Error: ${data.description || 'Desconocido'}`;
+      info.style.color = 'var(--red)';
+    }
+  } catch (e) {
+    info.innerText = `❌ Error de red: ${e.message}`;
+    info.style.color = 'var(--red)';
+  }
+}
+
+// ==========================================================
+// HELPERS DE GESTIÓN
 // ==========================================================
 function getConcurrencyMode() { return document.getElementById('cfgConcurrency').value; }
-function getMartingaleMode() { return document.getElementById('cfgMartingale').value; }
+function getManagementMode() { return document.getElementById('cfgMartingale').value; }
 function getBaseStake() { return parseFloat(document.getElementById('cfgBaseStake').value) || 0.35; }
+
 function stakeForLevel(level, base) {
+  if (getManagementMode() === 'flat') return base;
   if (level === 1) return base;
   if (level === 2) return parseFloat((base * MULT_MARTINGALE).toFixed(2));
   if (level >= 3) return parseFloat((base * MULT_MARTINGALE * MULT_MARTINGALE).toFixed(2));
   return base;
 }
 function getCurrentLevel(serie) {
-  return getMartingaleMode() === 'shared' ? state.sharedLevel : state.indepLevel[serie];
+  if (getManagementMode() === 'flat') return 1;
+  return getManagementMode() === 'shared' ? state.sharedLevel : state.indepLevel[serie];
 }
 function setCurrentLevel(serie, level) {
-  if (getMartingaleMode() === 'shared') state.sharedLevel = level;
+  if (getManagementMode() === 'flat') return;
+  if (getManagementMode() === 'shared') state.sharedLevel = level;
   else state.indepLevel[serie] = level;
 }
 function puedeDisparar(serie) {
-  const s = state[serie];
+  const s = state.series[serie];
+  if (!s.enabled) return false;
   if (Date.now() < s.cooldownUntil) return false;
   if (state.openTrades[serie]) return false;
   if (getConcurrencyMode() === 'exclusive') {
-    const otra = serie === 'A' ? 'B' : 'A';
-    if (state.openTrades[otra]) return false;
+    for (const k of SERIES_KEYS) {
+      if (k !== serie && state.openTrades[k]) return false;
+    }
   }
   return true;
 }
 
 // ==========================================================
-// STREAK FILTER (Microestructura)
+// STREAK FILTER
 // ==========================================================
 function validateMicrostructureStreak(returnsBuffer, signalDirection) {
   const STREAK_LOOKBACK = 3;
   if (!returnsBuffer || returnsBuffer.length < STREAK_LOOKBACK + 1) return true;
-
   const len = returnsBuffer.length;
   const rPrev1 = returnsBuffer[len - 2];
   const rPrev2 = returnsBuffer[len - 3];
   const rPrev3 = returnsBuffer[len - 4];
-
   if (signalDirection === 'PUT') {
     if (rPrev1 > 0 && rPrev2 > 0 && rPrev3 > 0) {
-      log(`🚫 [STREAK FILTER] PUT bloqueado — racha alcista previa`, '#f0883e');
+      log(`🚫 [STREAK] PUT bloqueado — racha alcista previa`, '#f0883e');
       return false;
     }
   }
   if (signalDirection === 'CALL') {
     if (rPrev1 < 0 && rPrev2 < 0 && rPrev3 < 0) {
-      log(`🚫 [STREAK FILTER] CALL bloqueado — racha bajista previa`, '#f0883e');
+      log(`🚫 [STREAK] CALL bloqueado — racha bajista previa`, '#f0883e');
       return false;
     }
   }
   return true;
+}
+
+// ==========================================================
+// BÚSQUEDA DE CUENTAS
+// ==========================================================
+async function buscarCuentas() {
+  const token = document.getElementById('cfgToken').value.trim();
+  const appId = document.getElementById('cfgAppId').value.trim();
+  if (!token) { alert('Introduce tu token PAT.'); return; }
+  if (!appId) { alert('El Deriv-App-ID es obligatorio.'); return; }
+  const btn = document.getElementById('btnFetchAccounts');
+  btn.disabled = true;
+  btn.innerText = '⏳ Buscando...';
+  document.getElementById('accountInfo').innerText = 'Consultando cuentas en Deriv...';
+  log('🔍 Consultando cuentas disponibles...', '#f0883e');
+  try {
+    const res = await fetch(ENDPOINT_ACCOUNTS, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}`, 'Deriv-App-ID': appId, 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const errMsg = data?.error?.message || data?.message || `Error HTTP ${res.status}`;
+      log(`❌ Error al buscar cuentas: ${errMsg}`, '#f87171');
+      document.getElementById('accountInfo').innerText = `❌ ${errMsg}`;
+      document.getElementById('accountInfo').style.color = 'var(--red)';
+      return;
+    }
+    const accounts = Array.isArray(data) ? data : (data.data || data.accounts || []);
+    if (accounts.length === 0) {
+      log('⚠ No se encontraron cuentas asociadas a este token.', '#f0883e');
+      document.getElementById('accountInfo').innerText = '⚠ No se encontraron cuentas.';
+      document.getElementById('accountInfo').style.color = 'var(--amber)';
+      return;
+    }
+    const sel = document.getElementById('selAccount');
+    sel.innerHTML = '';
+    accounts.forEach(acc => {
+      const accId = acc.account_id || acc.loginid || acc.id;
+      const accType = (acc.account_type || acc.type || 'demo').toLowerCase();
+      const currency = acc.currency || 'USD';
+      const balance = acc.balance != null ? ` · $${parseFloat(acc.balance).toFixed(2)}` : '';
+      const typeLabel = accType.includes('demo') ? 'Demo' : 'Real';
+      const opt = document.createElement('option');
+      opt.value = `${accId}|${accType.includes('demo') ? 'demo' : 'real'}`;
+      opt.textContent = `${accId} (${typeLabel}${balance} ${currency})`;
+      sel.appendChild(opt);
+    });
+    sel.disabled = false;
+    document.getElementById('btnConnect').disabled = false;
+    document.getElementById('accountInfo').innerText = `✅ ${accounts.length} cuenta(s) encontrada(s). Selecciona una y conecta.`;
+    document.getElementById('accountInfo').style.color = 'var(--green)';
+    log(`✔ ${accounts.length} cuenta(s) disponible(s).`, '#2ea043');
+  } catch (e) {
+    log(`❌ Error de red: ${e.message}`, '#f87171');
+    document.getElementById('accountInfo').innerText = `❌ Error de red: ${e.message}`;
+    document.getElementById('accountInfo').style.color = 'var(--red)';
+  } finally {
+    btn.disabled = false;
+    btn.innerText = '🔍 Buscar cuentas';
+  }
 }
 
 // ==========================================================
@@ -426,25 +804,20 @@ function validateMicrostructureStreak(returnsBuffer, signalDirection) {
 async function conectarCuentaOptions() {
   state.token = document.getElementById('cfgToken').value.trim();
   state.appId = document.getElementById('cfgAppId').value.trim();
-  const [accId, accType] = document.getElementById('selAccount').value.split('|');
+  const selVal = document.getElementById('selAccount').value;
+  if (!selVal) { alert('Primero busca cuentas y selecciona una.'); return; }
+  const [accId, accType] = selVal.split('|');
   state.accountId = accId; state.accountType = accType;
-
   if (!state.token) { alert('Introduce tu token PAT.'); return; }
   if (!state.appId) { alert('El Deriv-App-ID es obligatorio.'); return; }
-
   if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
   setDot('busy', 'Obteniendo OTP...');
   log(`Solicitando OTP para ${state.accountId} (${state.accountType.toUpperCase()})...`, '#f0883e');
-
   try {
     const otpUrl = ENDPOINT_OTP.replace('{accountId}', state.accountId);
     const res = await fetch(otpUrl, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${state.token}`,
-        'Deriv-App-ID': state.appId,
-        'Content-Type': 'application/json'
-      }
+      headers: { 'Authorization': `Bearer ${state.token}`, 'Deriv-App-ID': state.appId, 'Content-Type': 'application/json' }
     });
     const data = await res.json();
     if (!res.ok) {
@@ -476,22 +849,20 @@ function abrirWebSocketOptions(url) {
     document.getElementById('btnManualCall').disabled = false;
     document.getElementById('btnManualPut').disabled = false;
     document.getElementById('btnToggleBot').disabled = false;
-
     log(`✔ WebSocket establecido en ${state.accountId}.`, '#2ea043');
-
-    // ✅ PING KEEPALIVE INCONDICIONAL cada 30s (según doc oficial Deriv)
+    sendTelegram(`🟢 *Conexión establecida*\nCuenta: \`${state.accountId}\` (${state.accountType.toUpperCase()})\nHora: ${new Date().toLocaleString()}`);
     if (state.pingTimer) clearInterval(state.pingTimer);
     state.pingTimer = setInterval(() => {
       if (state.ws && state.ws.readyState === WebSocket.OPEN) {
         state.ws.send(JSON.stringify({ ping: 1 }));
       }
     }, PING_INTERVAL);
-
     iniciarWatchdogTicks();
     iniciarActualizadorCooldown();
     solicitarBalance();
-    solicitarTicks('A');
-    solicitarTicks('B');
+    SERIES_KEYS.forEach(k => {
+      if (state.series[k].enabled) solicitarTicks(k);
+    });
   };
 
   state.ws.onmessage = (evt) => {
@@ -501,6 +872,7 @@ function abrirWebSocketOptions(url) {
   state.ws.onerror = () => { log('Fallo de red WS.', '#f87171'); setDot('err', 'Error'); };
   state.ws.onclose = () => {
     log('Conexión finalizada. Programando reconexión...', '#f0883e');
+    sendTelegram(`🔴 *Conexión perdida*\nProgramando reconexión automática...`);
     desconectar(false);
     programarReconexion();
   };
@@ -508,20 +880,14 @@ function abrirWebSocketOptions(url) {
 
 function programarReconexion() {
   if (state.reconnectTimer) return;
-  if (!state.botRunning && !state.isConnected) {
-    // Si el usuario desconectó manualmente, no reconectar
-    return;
-  }
+  if (!state.botRunning) return;
   const delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, state.reconnectAttempts), RECONNECT_MAX_DELAY);
   state.reconnectAttempts++;
   log(`🔄 Reconectando en ${(delay/1000).toFixed(1)}s (intento ${state.reconnectAttempts})...`, '#f0883e');
   state.reconnectTimer = setTimeout(async () => {
     state.reconnectTimer = null;
-    try {
-      await conectarCuentaOptions();
-    } catch (e) {
-      programarReconexion();
-    }
+    try { await conectarCuentaOptions(); }
+    catch (e) { programarReconexion(); }
   }, delay);
 }
 
@@ -531,32 +897,20 @@ function solicitarBalance() {
 
 function solicitarTicks(serie) {
   if (!state.ws || !state.isConnected) return;
-  const s = state[serie];
-  log(`Suscribiendo Serie ${serie} → ${s.symbol}`, serie === 'A' ? '#38bdf8' : '#f59e0b');
-  if (serie === 'A') state.lastTickAtA = Date.now();
-  else state.lastTickAtB = Date.now();
+  const s = state.series[serie];
+  if (!s || !s.symbol) return;
+  log(`Suscribiendo Serie ${serie} → ${s.symbol}`, serie === 'A' ? '#38bdf8' : serie === 'B' ? '#f59e0b' : serie === 'C' ? '#a78bfa' : '#34d399');
+  state.lastTickAt[serie] = Date.now();
   state.ws.send(JSON.stringify({
-    ticks_history: s.symbol,
-    adjust_start_time: 1,
-    count: 65,
-    end: 'latest',
-    style: 'ticks',
-    subscribe: 1
+    ticks_history: s.symbol, adjust_start_time: 1, count: 65, end: 'latest', style: 'ticks', subscribe: 1
   }));
 }
 
 function reSuscribirSerie(serie) {
   if (!state.ws || !state.isConnected) return;
-  const s = state[serie];
-  log(`🔄 [WATCHDOG] Re-suscribiendo Serie ${serie} con forget_all previo...`, '#f0883e');
-  
-  // Primero olvidar suscripciones de ticks existentes
+  log(`🔄 [WATCHDOG] Re-suscribiendo Serie ${serie}...`, '#f0883e');
   state.ws.send(JSON.stringify({ forget_all: 'ticks' }));
-  
-  // Esperar y re-suscribir limpio
-  setTimeout(() => {
-    solicitarTicks(serie);
-  }, 800);
+  setTimeout(() => solicitarTicks(serie), 800);
 }
 
 function iniciarWatchdogTicks() {
@@ -564,22 +918,22 @@ function iniciarWatchdogTicks() {
   state.watchdogTimer = setInterval(() => {
     if (!state.isConnected || !state.ws || state.ws.readyState !== WebSocket.OPEN) return;
     const now = Date.now();
-    if (now - state.lastTickAtA > WATCHDOG_TIMEOUT) {
-      reSuscribirSerie('A');
-    }
-    if (now - state.lastTickAtB > WATCHDOG_TIMEOUT) {
-      reSuscribirSerie('B');
-    }
+    SERIES_KEYS.forEach(k => {
+      if (state.series[k].enabled && (now - state.lastTickAt[k] > WATCHDOG_TIMEOUT)) {
+        reSuscribirSerie(k);
+      }
+    });
   }, WATCHDOG_INTERVAL);
 }
 
 function iniciarActualizadorCooldown() {
   setInterval(() => {
-    ['A', 'B'].forEach(serie => {
-      const s = state[serie];
+    SERIES_KEYS.forEach(serie => {
+      const s = state.series[serie];
       const remaining = s.cooldownUntil - Date.now();
-      const elVal = document.getElementById(serie === 'A' ? 'kpiCdA' : 'kpiCdB');
-      const elInfo = document.getElementById(serie === 'A' ? 'kpiCdAInfo' : 'kpiCdBInfo');
+      const elVal = document.getElementById('kpiCd' + serie);
+      const elInfo = document.getElementById('kpiCd' + serie + 'Info');
+      if (!elVal) return;
       if (remaining > 0) {
         elVal.innerText = `${(remaining / 1000).toFixed(0)}s`;
         elVal.className = 'kpi-val txt-amber';
@@ -600,18 +954,11 @@ function iniciarActualizadorCooldown() {
 // ==========================================================
 function handleMessage(data) {
   if (data.error) {
-    // Ignorar errores de "already subscribed" del watchdog
-    if (data.error.message && data.error.message.includes('already subscribed')) {
-      console.warn('[API] Ya suscrito, ignorando');
-      return;
-    }
+    if (data.error.message && data.error.message.includes('already subscribed')) return;
     log(`[API ERROR]: ${data.error.message}`, '#f87171');
-    Object.keys(state.openTrades).forEach(k => {
+    SERIES_KEYS.forEach(k => {
       const t = state.openTrades[k];
-      if (t && t.status === 'PENDING_BUY') {
-        state.openTrades[k] = null;
-        updateJournalRow(t, 'ERROR');
-      }
+      if (t && t.status === 'PENDING_BUY') { state.openTrades[k] = null; updateJournalRow(t, 'ERROR'); }
     });
     return;
   }
@@ -620,43 +967,30 @@ function handleMessage(data) {
   if (data.msg_type === 'balance' && data.balance) {
     state.balance = parseFloat(data.balance.balance);
     state.currency = data.balance.currency || 'USD';
-    if (state.initialBalance === 0) {
-      state.initialBalance = state.balance;
-      state.peakBalance = state.balance;
-    }
+    if (state.initialBalance === 0) { state.initialBalance = state.balance; state.peakBalance = state.balance; }
     document.getElementById('kpiBalance').innerText = `$${state.balance.toFixed(2)}`;
   }
 
   if (data.msg_type === 'history' && data.history) {
     const sym = data.echo_req?.ticks_history || data.history?.symbol || '';
-    let serie = null;
-    if (sym === state.A.symbol) serie = 'A';
-    else if (sym === state.B.symbol) serie = 'B';
+    const serie = SERIES_KEYS.find(k => state.series[k].symbol === sym);
     if (!serie) return;
-
-    if (serie === 'A') { state.ticksSubscribedA = true; state.lastTickAtA = Date.now(); }
-    else { state.ticksSubscribedB = true; state.lastTickAtB = Date.now(); }
-
-    const s = state[serie];
+    state.ticksSubscribed[serie] = true;
+    state.lastTickAt[serie] = Date.now();
+    const s = state.series[serie];
     s.prices = []; s.epochs = []; s.returns = []; s.displayPrices = [];
     const times = data.history.times, prices = data.history.prices;
-    for (let i = 0; i < times.length; i++) {
-      procesarTick(serie, parseFloat(prices[i]), parseInt(times[i], 10), false);
-    }
-    log(`✔ Serie ${serie} calibrada con ${times.length} ticks.`, serie === 'A' ? '#38bdf8' : '#f59e0b');
+    for (let i = 0; i < times.length; i++) procesarTick(serie, parseFloat(prices[i]), parseInt(times[i], 10), false);
+    log(`✔ Serie ${serie} calibrada con ${times.length} ticks.`, serie === 'A' ? '#38bdf8' : serie === 'B' ? '#f59e0b' : serie === 'C' ? '#a78bfa' : '#34d399');
     return;
   }
 
   if (data.msg_type === 'tick' && data.tick) {
     const sym = data.tick.symbol;
-    let serie = null;
-    if (sym === state.A.symbol) serie = 'A';
-    else if (sym === state.B.symbol) serie = 'B';
+    const serie = SERIES_KEYS.find(k => state.series[k].symbol === sym);
     if (!serie) return;
-
-    if (serie === 'A') { state.ticksSubscribedA = true; state.lastTickAtA = Date.now(); }
-    else { state.ticksSubscribedB = true; state.lastTickAtB = Date.now(); }
-
+    state.ticksSubscribed[serie] = true;
+    state.lastTickAt[serie] = Date.now();
     procesarTick(serie, parseFloat(data.tick.quote), parseInt(data.tick.epoch, 10), true);
     return;
   }
@@ -665,12 +999,9 @@ function handleMessage(data) {
     const id = data.proposal.id, ask = data.proposal.ask_price;
     if (!id || !ask) {
       log('❌ Propuesta inválida.', '#f87171');
-      Object.keys(state.openTrades).forEach(k => {
+      SERIES_KEYS.forEach(k => {
         const t = state.openTrades[k];
-        if (t && t.status === 'PENDING_BUY') {
-          state.openTrades[k] = null;
-          updateJournalRow(t, 'ERROR');
-        }
+        if (t && t.status === 'PENDING_BUY') { state.openTrades[k] = null; updateJournalRow(t, 'ERROR'); }
       });
       return;
     }
@@ -683,27 +1014,23 @@ function handleMessage(data) {
     const totalLatency = performance.now() - state.proposalSentAt;
     state.lastLatency = totalLatency;
     document.getElementById('kpiLatency').innerText = `${totalLatency.toFixed(0)} ms`;
-
-    Object.keys(state.openTrades).forEach(k => {
+    SERIES_KEYS.forEach(k => {
       const t = state.openTrades[k];
       if (t && t.status === 'PENDING_BUY') {
-        t.contractId = cid;
-        t.latency = totalLatency;
-        t.status = 'OPEN';
-        updateJournalRow(t, 'OPEN');
-        showTradeBadge(k, t.type, 'open');
+        t.contractId = cid; t.latency = totalLatency; t.status = 'OPEN';
+        updateJournalRow(t, 'OPEN'); showTradeBadge(k, t.type, 'open');
+        sendTelegram(
+          `🚀 *Operación Abierta*\nSerie: ${t.serie} (${t.symbol})\nTipo: ${t.type}\nStake: $${t.stake.toFixed(2)}\nNivel: L${t.level}\nZ-Score: ${t.zScore.toFixed(2)}σ\nID: \`${cid}\``
+        );
       }
     });
-
     log(`🚀 #${cid} confirmado (${totalLatency.toFixed(0)}ms)`, '#2ea043');
     state.ws.send(JSON.stringify({ proposal_open_contract: 1, contract_id: cid, subscribe: 1 }));
     return;
   }
 
   if (data.msg_type === 'proposal_open_contract' && data.proposal_open_contract) {
-    if (data.proposal_open_contract.is_sold === 1) {
-      liquidarContrato(data.proposal_open_contract);
-    }
+    if (data.proposal_open_contract.is_sold === 1) liquidarContrato(data.proposal_open_contract);
   }
 }
 
@@ -711,11 +1038,10 @@ function handleMessage(data) {
 // PROCESAMIENTO DE TICK
 // ==========================================================
 function procesarTick(serie, price, epoch, permitirDisparo) {
-  const s = state[serie];
-  s.prices.push(price);
-  s.epochs.push(epoch);
+  const s = state.series[serie];
+  if (!s) return;
+  s.prices.push(price); s.epochs.push(epoch);
   if (s.prices.length > 70) { s.prices.shift(); s.epochs.shift(); }
-
   if (s.prices.length >= 2) {
     const prev = s.prices[s.prices.length - 2];
     const ret = Math.log(price / prev);
@@ -723,15 +1049,14 @@ function procesarTick(serie, price, epoch, permitirDisparo) {
     if (s.returns.length > 60) s.returns.shift();
   }
   s.lastPrice = price;
-
   s.displayPrices.push(price);
   if (s.displayPrices.length > MAX_POINTS) s.displayPrices.shift();
   dibujarChart(serie);
 
-  const elP = document.getElementById(serie === 'A' ? 'priceA' : 'priceB');
-  const elD = document.getElementById(serie === 'A' ? 'deltaA' : 'deltaB');
-  elP.innerText = price.toFixed(2);
-  if (s.prices.length >= 2) {
+  const elP = document.getElementById('price' + serie);
+  const elD = document.getElementById('delta' + serie);
+  if (elP) elP.innerText = price.toFixed(2);
+  if (elD && s.prices.length >= 2) {
     const prev = s.prices[s.prices.length - 2];
     const dPct = ((price - prev) / prev) * 100;
     elD.innerText = `Δ ${dPct >= 0 ? '+' : ''}${dPct.toFixed(3)}%`;
@@ -740,15 +1065,14 @@ function procesarTick(serie, price, epoch, permitirDisparo) {
 
   if (s.returns.length >= 20) {
     const z = calcularZScore(s);
-    const elZ = document.getElementById(serie === 'A' ? 'zA' : 'zB');
-    const elBar = document.getElementById(serie === 'A' ? 'zbarA' : 'zbarB');
-    elZ.innerText = `Z: ${z >= 0 ? '+' : ''}${z.toFixed(2)}σ · Buffer: ${s.returns.length}/60`;
-    const clamped = Math.max(-4, Math.min(4, z));
-    elBar.style.left = `${((clamped + 4) / 8) * 100}%`;
-
-    if (permitirDisparo && state.botRunning) {
-      evaluarGatillo(serie, z, epoch);
+    const elZ = document.getElementById('z' + serie);
+    const elBar = document.getElementById('zbar' + serie);
+    if (elZ) elZ.innerText = `Z: ${z >= 0 ? '+' : ''}${z.toFixed(2)}σ · Buffer: ${s.returns.length}/60`;
+    if (elBar) {
+      const clamped = Math.max(-4, Math.min(4, z));
+      elBar.style.left = `${((clamped + 4) / 8) * 100}%`;
     }
+    if (permitirDisparo && state.botRunning) evaluarGatillo(serie, z, epoch);
   }
 }
 
@@ -765,25 +1089,21 @@ function calcularZScore(s) {
 }
 
 // ==========================================================
-// GATILLO DUAL CON STREAK FILTER
+// GATILLO
 // ==========================================================
 function evaluarGatillo(serie, z, epoch) {
   const mode = document.getElementById('cfgMode').value;
-  if (mode !== 'dual' && mode !== serie) return;
-
+  if (mode !== 'multi' && mode !== serie) return;
   const isPut = z >= 3.2, isCall = z <= -3.2;
   if (!isPut && !isCall) return;
-
   if (!puedeDisparar(serie)) return;
 
   const direction = isCall ? 'CALL' : 'PUT';
 
-  // ✅ STREAK FILTER — veto por racha de momentum previa
   const streakFilterEnabled = document.getElementById('cfgStreakFilter')?.checked ?? true;
   if (streakFilterEnabled) {
-    const s = state[serie];
-    const aprobado = validateMicrostructureStreak(s.returns, direction);
-    if (!aprobado) return;
+    const s = state.series[serie];
+    if (!validateMicrostructureStreak(s.returns, direction)) return;
   }
 
   const tp = parseFloat(document.getElementById('cfgTP').value) || 5.0;
@@ -794,7 +1114,7 @@ function evaluarGatillo(serie, z, epoch) {
 
   const level = getCurrentLevel(serie);
   const stake = stakeForLevel(level, getBaseStake());
-  triggerTrade(serie, direction, z, epoch, state[serie].lastPrice, level, stake);
+  triggerTrade(serie, direction, z, epoch, state.series[serie].lastPrice, level, stake);
 }
 
 function ejecutarManual(direction) {
@@ -802,32 +1122,30 @@ function ejecutarManual(direction) {
   const serie = document.getElementById('cfgManualAsset').value;
   if (state.openTrades[serie]) { log(`Serie ${serie} ya tiene una operación abierta.`, '#f0883e'); return; }
   if (getConcurrencyMode() === 'exclusive') {
-    const otra = serie === 'A' ? 'B' : 'A';
-    if (state.openTrades[otra]) { log(`Modo exclusivo: la otra serie tiene operación abierta.`, '#f0883e'); return; }
+    for (const k of SERIES_KEYS) {
+      if (k !== serie && state.openTrades[k]) { log(`Modo exclusivo: otra serie tiene operación abierta.`, '#f0883e'); return; }
+    }
   }
   const level = getCurrentLevel(serie);
   const stake = parseFloat(document.getElementById('cfgBaseStake').value) || 0.35;
-  triggerTrade(serie, direction, 0, Math.floor(Date.now() / 1000), state[serie].lastPrice, level, stake, true);
+  triggerTrade(serie, direction, 0, Math.floor(Date.now() / 1000), state.series[serie].lastPrice, level, stake, true);
 }
 
 // ==========================================================
 // TRIGGER TRADE
 // ==========================================================
 function triggerTrade(serie, direction, z, epoch, entryPrice, level, stake, manual = false) {
-  // ⚠️ REGLA ARQUITECTÓNICA: Independencia entre series
-  if (getMartingaleMode() === 'shared') {
+  if (getManagementMode() === 'shared') {
     console.warn('[ARCH] Martingala compartida detectada. Forzando modo independiente.');
     document.getElementById('cfgMartingale').value = 'independent';
   }
-
-  const s = state[serie];
+  const s = state.series[serie];
   const trade = {
     id: state.nextTradeId++, serie, symbol: s.symbol, type: direction,
     level, stake, zScore: z, entryPrice, exitPrice: null, profit: null,
     status: 'PENDING_BUY', startTime: Date.now(), purchaseTime: null,
     exitTime: null, contractId: null, latency: 0, manual, balanceAfter: null
   };
-
   state.openTrades[serie] = trade;
   state.trades.push(trade);
   state.proposalSentAt = performance.now();
@@ -835,8 +1153,7 @@ function triggerTrade(serie, direction, z, epoch, entryPrice, level, stake, manu
     proposal: 1, amount: stake, basis: 'stake', contract_type: direction,
     currency: state.currency, duration: 1, duration_unit: 't', underlying_symbol: s.symbol
   }));
-
-  log(`⚡ Serie ${serie} (${s.symbol}): Z=${z.toFixed(2)}σ → ${direction} $${stake.toFixed(2)} [L${level}]${manual ? ' (manual)' : ''}`, serie === 'A' ? '#38bdf8' : '#f59e0b');
+  log(`⚡ Serie ${serie} (${s.symbol}): Z=${z.toFixed(2)}σ → ${direction} $${stake.toFixed(2)} [L${level}]${manual ? ' (manual)' : ''}`, serie === 'A' ? '#38bdf8' : serie === 'B' ? '#f59e0b' : serie === 'C' ? '#a78bfa' : '#34d399');
   appendJournalRow(trade);
 }
 
@@ -846,13 +1163,13 @@ function triggerTrade(serie, direction, z, epoch, entryPrice, level, stake, manu
 function liquidarContrato(poc) {
   const cid = poc.contract_id;
   let serie = null, trade = null;
-  for (const k of ['A', 'B']) {
+  for (const k of SERIES_KEYS) {
     const t = state.openTrades[k];
     if (t && t.contractId === cid) { serie = k; trade = t; break; }
   }
   if (!trade) { log(`⚠ Liquidación para contrato desconocido ${cid}`, '#f0883e'); return; }
 
-  const s = state[serie];
+  const s = state.series[serie];
   const profit = parseFloat(poc.profit);
   const isWin = profit > 0;
 
@@ -869,22 +1186,23 @@ function liquidarContrato(poc) {
   s.cooldownUntil = Date.now() + cdSeconds * 1000;
 
   if (isWin) {
-    state.wins++;
-    state.grossProfit += profit;
+    state.wins++; state.grossProfit += profit;
     log(`✅ GANADA Serie ${serie} #${cid} +$${profit.toFixed(2)} · Cooldown ${cdSeconds}s`, '#2ea043');
   } else {
-    state.losses++;
-    state.grossLoss += Math.abs(profit);
+    state.losses++; state.grossLoss += Math.abs(profit);
     log(`❌ PERDIDA Serie ${serie} #${cid} -$${Math.abs(profit).toFixed(2)} · Cooldown ${cdSeconds}s`, '#f87171');
   }
 
-  const currentLvl = trade.level;
-  if (isWin) {
+  const mgmt = getManagementMode();
+  if (mgmt === 'flat') {
+    // Stake plano: no se modifica ningún nivel
+  } else if (isWin) {
     setCurrentLevel(serie, 1);
   } else {
+    const currentLvl = trade.level;
     if (currentLvl < 3) {
       setCurrentLevel(serie, currentLvl + 1);
-      log(`[MARTINGALA ${getMartingaleMode() === 'shared' ? 'COMPARTIDA' : 'INDEPENDIENTE'}] Serie ${serie} → Nivel ${currentLvl + 1}`, '#f0883e');
+      log(`[MARTINGALA ${mgmt === 'shared' ? 'COMPARTIDA' : 'INDEPENDIENTE'}] Serie ${serie} → Nivel ${currentLvl + 1}`, '#f0883e');
     } else {
       setCurrentLevel(serie, 1);
       log(`[MARTINGALA] Cap L3 alcanzado en Serie ${serie}. Reset a Nivel 1.`, '#f87171');
@@ -894,7 +1212,6 @@ function liquidarContrato(poc) {
   state.netPnL += profit;
   state.balance += profit;
   trade.balanceAfter = state.balance;
-
   if (state.balance > state.peakBalance) state.peakBalance = state.balance;
   const dd = ((state.peakBalance - state.balance) / state.peakBalance) * 100;
   if (dd > state.maxDD) state.maxDD = dd;
@@ -903,6 +1220,13 @@ function liquidarContrato(poc) {
   actualizarMetricas();
   updateJournalRow(trade, trade.status);
   showTradeBadge(serie, trade.type, 'close');
+
+  const icono = isWin ? '✅' : '❌';
+  const signo = profit >= 0 ? '+' : '';
+  const wr = (state.wins + state.losses) > 0 ? ((state.wins / (state.wins + state.losses)) * 100).toFixed(1) : '0.0';
+  sendTelegram(
+    `${icono} *Operación Cerrada*\nSerie: ${serie} (${s.symbol})\nTipo: ${trade.type}\nResultado: ${signo}$${profit.toFixed(2)}\nStake: $${trade.stake.toFixed(2)}\nBalance: $${state.balance.toFixed(2)} ${state.currency}\nPnL Sesión: ${state.netPnL >= 0 ? '+' : ''}$${state.netPnL.toFixed(2)}\nWin Rate: ${wr}% (${state.wins}W/${state.losses}L)`
+  );
 }
 
 // ==========================================================
@@ -913,20 +1237,15 @@ function appendJournalRow(trade) {
   if (tbody.children.length === 1 && tbody.children[0].children.length === 1) tbody.innerHTML = '';
   const tr = document.createElement('tr');
   tr.id = `trade-${trade.id}`;
-  const colorSerie = trade.serie === 'A' ? 'var(--v75)' : 'var(--v100)';
+  const colorSerie = trade.serie === 'A' ? 'var(--v75)' : trade.serie === 'B' ? 'var(--v100)' : trade.serie === 'C' ? 'var(--v25)' : 'var(--v50)';
   const typePill = trade.type === 'CALL' ? '<span class="pill pill-rise">▲ CALL</span>' : '<span class="pill pill-fall">▼ PUT</span>';
   tr.innerHTML = `
-    <td>#${trade.id}</td>
-    <td class="time-cell">${new Date(trade.startTime).toTimeString().split(' ')[0]}</td>
+    <td>#${trade.id}</td><td>${new Date(trade.startTime).toTimeString().split(' ')[0]}</td>
     <td style="color:${colorSerie}; font-weight:700;">${trade.serie}</td>
-    <td>${typePill}</td>
-    <td>L${trade.level}</td>
-    <td>${trade.zScore.toFixed(2)}σ</td>
+    <td>${typePill}</td><td>L${trade.level}</td><td>${trade.zScore.toFixed(2)}σ</td>
     <td>$${trade.stake.toFixed(2)}</td>
-    <td class="entry-cell">--</td>
-    <td class="exit-cell">--</td>
-    <td class="profit-cell">--</td>
-    <td class="balance-cell">--</td>
+    <td class="entry-cell">--</td><td class="exit-cell">--</td>
+    <td class="profit-cell">--</td><td class="balance-cell">--</td>
     <td class="lat-cell">--</td>
     <td class="status-cell"><span class="pill pill-open">ENVIANDO</span></td>
   `;
@@ -937,7 +1256,6 @@ function updateJournalRow(trade, status) {
   const tr = document.getElementById(`trade-${trade.id}`);
   if (!tr) return;
   tr.querySelector('.entry-cell').innerText = trade.entryPrice.toFixed(2);
-
   if (status === 'OPEN' || status === 'PENDING_BUY') {
     tr.querySelector('.status-cell').innerHTML = '<span class="pill pill-open">EN CURSO</span>';
     tr.querySelector('.lat-cell').innerText = trade.latency ? `${trade.latency.toFixed(0)} ms` : '--';
@@ -947,7 +1265,6 @@ function updateJournalRow(trade, status) {
     tr.querySelector('.status-cell').innerHTML = '<span class="pill pill-loss">ERROR</span>';
     return;
   }
-
   const isWin = status === 'WIN';
   tr.querySelector('.exit-cell').innerText = trade.exitPrice != null ? trade.exitPrice.toFixed(2) : '--';
   const profitCell = tr.querySelector('.profit-cell');
@@ -962,7 +1279,7 @@ function updateJournalRow(trade, status) {
 }
 
 function showTradeBadge(serie, type, phase) {
-  const badge = document.getElementById(serie === 'A' ? 'badgeA' : 'badgeB');
+  const badge = document.getElementById('badge' + serie);
   if (!badge) return;
   if (phase === 'close') { badge.classList.remove('show'); return; }
   badge.innerText = type === 'CALL' ? '▲ CALL' : '▼ PUT';
@@ -980,14 +1297,18 @@ function actualizarMetricas() {
   pnlEl.className = state.netPnL >= 0 ? 'kpi-sub txt-green' : 'kpi-sub txt-red';
 
   const base = getBaseStake();
-  if (getMartingaleMode() === 'shared') {
+  const mgmt = getManagementMode();
+  if (mgmt === 'flat') {
+    document.getElementById('kpiLevel').innerText = 'Plano';
+    document.getElementById('kpiNextStake').innerText = `Próximo: $${base.toFixed(2)}`;
+  } else if (mgmt === 'shared') {
     const lvl = state.sharedLevel;
     document.getElementById('kpiLevel').innerText = `L${lvl} (compartida)`;
     document.getElementById('kpiNextStake').innerText = `Próximo: $${stakeForLevel(lvl, base).toFixed(2)}`;
   } else {
-    const lA = state.indepLevel.A, lB = state.indepLevel.B;
-    document.getElementById('kpiLevel').innerText = `A:L${lA} / B:L${lB}`;
-    document.getElementById('kpiNextStake').innerText = `Próx: $${stakeForLevel(lA, base).toFixed(2)} / $${stakeForLevel(lB, base).toFixed(2)}`;
+    const lA = state.indepLevel.A, lB = state.indepLevel.B, lC = state.indepLevel.C, lD = state.indepLevel.D;
+    document.getElementById('kpiLevel').innerText = `A:L${lA} / B:L${lB} / C:L${lC} / D:L${lD}`;
+    document.getElementById('kpiNextStake').innerText = `Próx: $${stakeForLevel(lA, base).toFixed(2)} / $${stakeForLevel(lB, base).toFixed(2)} / $${stakeForLevel(lC, base).toFixed(2)} / $${stakeForLevel(lD, base).toFixed(2)}`;
   }
 
   document.getElementById('kpiDD').innerText = `${state.maxDD.toFixed(2)}%`;
@@ -999,28 +1320,32 @@ function actualizarMetricas() {
 // ==========================================================
 // GRÁFICOS
 // ==========================================================
-const ctxA = document.getElementById('chartA').getContext('2d');
-const ctxB = document.getElementById('chartB').getContext('2d');
+const ctxMap = {
+  A: document.getElementById('chartA').getContext('2d'),
+  B: document.getElementById('chartB').getContext('2d'),
+  C: document.getElementById('chartC').getContext('2d'),
+  D: document.getElementById('chartD').getContext('2d')
+};
+const colorMap = { A: '#38bdf8', B: '#f59e0b', C: '#a78bfa', D: '#34d399' };
 
 function dibujarChart(serie) {
-  const canvas = serie === 'A' ? document.getElementById('chartA') : document.getElementById('chartB');
-  const ctx = serie === 'A' ? ctxA : ctxB;
-  const color = serie === 'A' ? '#38bdf8' : '#f59e0b';
+  const canvas = document.getElementById('chart' + serie);
+  const ctx = ctxMap[serie];
+  const color = colorMap[serie];
+  if (!canvas || !ctx) return;
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#020617'; ctx.fillRect(0, 0, W, H);
   ctx.strokeStyle = 'rgba(48,54,61,0.5)'; ctx.lineWidth = 1;
-  for (let i = 1; i < 5; i++) { const y = (H / 5) * i; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
-  for (let i = 1; i < 8; i++) { const x = (W / 8) * i; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-
-  const data = state[serie].displayPrices;
+  for (let i = 1; i < 4; i++) { const y = (H / 4) * i; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  for (let i = 1; i < 6; i++) { const x = (W / 6) * i; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  const data = state.series[serie].displayPrices;
   if (data.length < 2) return;
   const minP = Math.min(...data), maxP = Math.max(...data);
   const range = Math.max(maxP - minP, 1e-9);
   ctx.strokeStyle = 'rgba(100,116,139,0.4)';
   ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke();
-
-  ctx.strokeStyle = color; ctx.lineWidth = 1.8; ctx.beginPath();
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.beginPath();
   const stepX = W / (MAX_POINTS - 1);
   const offsetX = W - (data.length - 1) * stepX;
   for (let i = 0; i < data.length; i++) {
@@ -1029,11 +1354,9 @@ function dibujarChart(serie) {
     if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.stroke();
-
   const lastX = offsetX + (data.length - 1) * stepX;
   const lastY = H - ((data[data.length - 1] - minP) / range) * (H * 0.85) - H * 0.075;
-  ctx.fillStyle = color;
-  ctx.beginPath(); ctx.arc(lastX, lastY, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = color; ctx.beginPath(); ctx.arc(lastX, lastY, 2.5, 0, Math.PI * 2); ctx.fill();
 }
 
 // ==========================================================
@@ -1063,19 +1386,22 @@ function toggleBot() {
   state.botRunning = !state.botRunning;
   const btn = document.getElementById('btnToggleBot');
   if (state.botRunning) {
-    btn.innerText = '⏸ Pausar Bot Dual';
+    syncEnabledSeries();
+    btn.innerText = '⏸ Pausar Bot';
     btn.className = 'btn btn-red';
-    log(`▶ BOT DUAL ACTIVADO (concurrencia: ${getConcurrencyMode()}, martingala: ${getMartingaleMode()})`, '#2ea043');
+    log(`▶ BOT ACTIVADO (concurrencia: ${getConcurrencyMode()}, gestión: ${getManagementMode()})`, '#2ea043');
+    sendTelegram(`▶ *Bot ACTIVADO*\nCuenta: \`${state.accountId}\`\nConcurrencia: ${getConcurrencyMode()}\nGestión: ${getManagementMode()}`);
   } else {
-    btn.innerText = '▶ Iniciar Bot Dual';
+    btn.innerText = '▶ Iniciar Bot';
     btn.className = 'btn btn-green';
     log('⏸ BOT PAUSADO', '#f0883e');
+    sendTelegram(`⏸ *Bot PAUSADO*\nBalance: $${state.balance.toFixed(2)}\nPnL Sesión: ${state.netPnL >= 0 ? '+' : ''}$${state.netPnL.toFixed(2)}`);
   }
 }
 
 function cambiarActivo(serie) {
-  const sel = document.getElementById(serie === 'A' ? 'cfgSymbolA' : 'cfgSymbolB');
-  const s = state[serie];
+  const sel = document.getElementById('cfgSymbol' + serie);
+  const s = state.series[serie];
   s.symbol = sel.value;
   s.prices = []; s.epochs = []; s.returns = []; s.displayPrices = [];
   s.cooldownUntil = 0; s.lastTradeStatus = null;
@@ -1088,13 +1414,13 @@ function desconectar(manual = true) {
   if (state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
   if (state.ws) { try { state.ws.close(); } catch(e){} state.ws = null; }
   state.isConnected = false;
-  if (manual) {
-    state.botRunning = false;
-    state.reconnectAttempts = 0;
-  }
-  state.ticksSubscribedA = false; state.ticksSubscribedB = false;
-  state.openTrades = { A: null, B: null };
-  state.indepLevel = { A: 1, B: 1 };
+  if (manual) { state.botRunning = false; state.reconnectAttempts = 0; }
+  SERIES_KEYS.forEach(k => {
+    state.ticksSubscribed[k] = false;
+    state.openTrades[k] = null;
+    state.indepLevel[k] = 1;
+  });
+  state.sharedLevel = 1;
   if (manual) {
     document.getElementById('btnConnect').style.display = 'inline-block';
     document.getElementById('btnDisconnect').style.display = 'none';
@@ -1105,6 +1431,13 @@ function desconectar(manual = true) {
     setDot('', 'Desconectado');
   }
 }
-</script>
-</body>
-</html>
+
+// ==========================================================
+// INICIALIZACIÓN
+// ==========================================================
+cargarTelegramConfig();
+syncEnabledSeries();
+document.getElementById('cfgTgEnabled')?.addEventListener('change', () => {
+  state.tg.enabled = document.getElementById('cfgTgEnabled').checked;
+  guardarTelegramConfig();
+});
